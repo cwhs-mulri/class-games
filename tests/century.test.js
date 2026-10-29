@@ -112,3 +112,15 @@ test('여러 학생 60초 결과는 평균으로 합친다', () => {
   const m = E.mergePrep([{ food: 10, special: 1, damage: 10 }, { food: 6, special: 0, damage: 20 }]);
   assert.equal(m.food, 8); assert.equal(m.damage, 15); assert.ok(m.special >= 0 && m.special <= 1);
 });
+
+test('직접 만든 재난: 값은 범위 안으로, 모든 동물에 같은 효과, 리플레이에도 반영', () => {
+  const c = E.sanitizeCustom({ name: '  우리 학교 정전  ', icon: '⚡', e: { pop: -99, energy: 7, junk: 5 }, dT: 3, permT: -1, theme: 'nope' });
+  assert.equal(c.name, '우리 학교 정전'); assert.equal(c.e.pop, -25); assert.equal(c.e.energy, 7); assert.equal(c.e.junk, undefined);
+  assert.equal(c.dT, 0.5); assert.equal(c.permT, -0.3); assert.equal(c.theme, 'heatdome');
+  const base = E.newRun('5', 'A', 'bear', 'mid'); E.applyPrep(base, { food: 9, special: 1, damage: 15 });
+  const a = JSON.parse(JSON.stringify(base)), b = JSON.parse(JSON.stringify(base));
+  E.resolveRun(a, 0, {}); E.resolveRun(b, 0, { surprises: [{ name: '폭설', e: { energy: -20 }, permT: 0.2 }] });
+  assert.ok(b.energy < a.energy); assert.equal(b.tAdd, 0.2);
+  assert.equal(b.last.notes[0].name, '폭설');
+  assert.equal(E.replay(b, 'mid').pop, E.replay(JSON.parse(JSON.stringify(b)), 'mid').pop);
+});

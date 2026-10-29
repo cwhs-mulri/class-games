@@ -467,6 +467,20 @@ const SURPRISES = {
     e: { bear: { hab: 4 }, penguin: { hab: 4 }, coral: { hab: 4 }, pollock: { hab: 4 } } },
 };
 const SURPRISE_ORDER = ['elnino', 'heatdome', 'wildfire', 'methane', 'volcano', 'plastic', 'oilspill', 'deal'];
+// 교사가 직접 만든 재난: 모든 동물에 같은 효과. 값은 범위 안으로 자른다
+const CUSTOM_THEMES = ['elnino', 'heatdome', 'wildfire', 'methane', 'volcano', 'plastic', 'oilspill', 'deal'];
+function sanitizeCustom(c) {
+  c = c || {};
+  const num = (v, a, b) => { v = Number(v); return Number.isFinite(v) ? Math.round(Math.max(a, Math.min(b, v)) * 100) / 100 : 0; };
+  const str = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  const e = {}; for (const k of ['pop', 'energy', 'health', 'hab']) { const v = Math.round(num((c.e || {})[k], -25, 25)); if (v) e[k] = v; }
+  return { custom: true, name: str(c.name, 20) || '직접 만든 재난', icon: str(c.icon, 4) || '⚠️', text: str(c.text, 90), sci: str(c.sci, 200), theme: CUSTOM_THEMES.includes(c.theme) ? c.theme : 'heatdome', dT: num(c.dT, -0.5, 0.5), permT: num(c.permT, -0.3, 0.3), e };
+}
+// 기습 이벤트 하나를 정의로: 미리 만든 것은 키(문자열), 직접 만든 것은 객체
+function surpriseDef(k) {
+  if (typeof k === 'string') { const S = SURPRISES[k]; return S ? Object.assign({ key: k }, S, { effFor: a => S.e[a] || {} }) : null; }
+  const c = sanitizeCustom(k); return Object.assign({ key: 'custom' }, c, { effFor: () => c.e });
+}
 
 // 과학 무전 (퀴즈)
 const QUIZ = [
@@ -530,7 +544,7 @@ function baseHab(animal, T, ppm) {
 function genClimate(scenKey, gen, st, surprises) {
   const S = SCENARIOS[scenKey];
   let T = S.T[gen] + (st.tAdd || 0);
-  for (const k of surprises || []) T += SURPRISES[k].dT || 0;
+  for (const k of surprises || []) { const S = surpriseDef(k); if (S) T += S.dT || 0; }
   return { T, ppm: S.ppm[gen] };
 }
 function addE(st, e, popScale) {
@@ -570,9 +584,10 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
     if (t === 'hab') addE(st, { hab: 6 });
   }
   for (const k of surprises) {
-    const S = SURPRISES[k]; addE(st, S.e[animal], shield);
+    const S = surpriseDef(k); if (!S) continue;
+    addE(st, S.effFor(animal), shield);
     if (S.permT) st.tAdd = Math.round((st.tAdd + S.permT) * 100) / 100;
-    notes.push(k);
+    notes.push(typeof k === 'string' ? k : { icon: S.icon, name: S.name });
   }
   const { T, ppm } = genClimate(scenKey, gen, st, surprises);
   const A = ANIMALS[animal];
@@ -703,7 +718,7 @@ function parseCode(str, team) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  TUNE, GENS, HIST_GENS, DECADES, SCENARIOS, SCEN_ORDER, ANIMALS, ANIMAL_ORDER, QUIZ, QUIZ_GENS, HISTORY, NOW, ROLES, ROLE_USES, SURPRISES, SURPRISE_ORDER,
+  TUNE, GENS, HIST_GENS, CUSTOM_THEMES, sanitizeCustom, surpriseDef, DECADES, SCENARIOS, SCEN_ORDER, ANIMALS, ANIMAL_ORDER, QUIZ, QUIZ_GENS, HISTORY, NOW, ROLES, ROLE_USES, SURPRISES, SURPRISE_ORDER,
   eventOrder, findEvent, allEvents, newRun, prepToState, mergePrep, applyPrep, resolveRun, choose, hasQuiz, quizFor, applyQuiz, answerQuiz, advance,
   currentHab, currentT, replay, resultCode, parseCode, gensSurvived, baseHab, stepGen, genClimate, tally, assignRoles, roleOf, abilityDesc, hashStr, rng, clamp,
 };

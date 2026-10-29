@@ -11,6 +11,7 @@ const Splash = (function () {
     oilspill: { kicker: '해양 사고 긴급 속보', bg1: '#050608', bg2: '#1C2230', accent: '#F4C542', fx: 'oil' },
     deal:     { kicker: '국제 뉴스 속보', bg1: '#062012', bg2: '#0F5A33', accent: '#5CF29A', fx: 'leaves', good: true },
   };
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   let active = null, audioOn = false, actx = null;
 
@@ -84,25 +85,27 @@ const Splash = (function () {
   }
 
   function show(o) {
-    const S = SURPRISES[o.key], th = THEME[o.key]; if (!S || !th) return;
+    const S = o.def || surpriseDef(o.key); if (!S) return;
+    const base = THEME[S.custom ? S.theme : S.key] || THEME.heatdome;
+    const th = S.custom ? Object.assign({}, base, { kicker: base.good ? '특별 속보' : '긴급 재난 속보' }) : base;
     if (active) close();
     const dur = o.mode === 'phone' ? 9000 : o.mode === 'preview' ? 7000 : 12000;
     const el = document.createElement('div');
     el.className = `splash-x ${o.mode} ${th.good ? 'good' : ''}`;
-    el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-label', S.name);
+    el.setAttribute('role', 'alertdialog'); el.setAttribute('aria-label', S.name || '');
     el.style.setProperty('--tl', String(Math.max(4, S.name.length))); el.style.setProperty('--sx1', th.bg1); el.style.setProperty('--sx2', th.bg2); el.style.setProperty('--sxa', th.accent);
     const temp = S.dT ? `이번 세대 기온 ${S.dT > 0 ? '+' : ''}${S.dT}°C` : S.permT ? `앞으로 계속 기온 ${S.permT > 0 ? '+' : ''}${S.permT}°C` : '';
-    const ticker = Array(6).fill(`${th.good ? '◆' : '⚠'} ${th.kicker} · ${S.name} · ${o.target || ''}`).join('　　');
+    const ticker = Array(6).fill(`${th.good ? '◆' : '⚠'} ${th.kicker} · ${esc(S.name)} · ${esc(o.target || '')}`).join('　　');
     el.innerHTML = `<canvas class="sx-fx" aria-hidden="true"></canvas><div class="sx-flash" aria-hidden="true"></div>
       <div class="sx-tick top" aria-hidden="true"><span>${ticker}</span></div>
       <div class="sx-body">
         <div class="sx-kicker">${th.good ? '◆' : '⚠'} ${th.kicker}${o.mode === 'preview' ? ' · 미리보기' : ''}</div>
-        <div class="sx-icon">${S.icon}</div>
-        <h1 class="sx-title">${S.name}</h1>
-        <p class="sx-text">${S.text}</p>
-        <div class="sx-meta">${o.target ? `<span class="sx-chip">대상: ${o.target}</span>` : ''}${temp ? `<span class="sx-chip">${temp}</span>` : ''}<span class="sx-chip">다음 결과에 반영</span></div>
-        ${(o.effects || []).length ? `<div class="sx-eff">${o.effects.map(e => `<div class="sx-row"><b>${e.label}</b>${e.chips.map(c => `<span class="sx-chip ${c.v > 0 ? 'up' : 'down'}">${c.t}</span>`).join('')}</div>`).join('')}</div>` : ''}
-        <p class="sx-sci">${S.sci}</p>
+        <div class="sx-icon">${esc(S.icon)}</div>
+        <h1 class="sx-title">${esc(S.name)}</h1>
+        ${S.text ? `<p class="sx-text">${esc(S.text)}</p>` : ''}
+        <div class="sx-meta">${o.target ? `<span class="sx-chip">대상: ${esc(o.target)}</span>` : ''}${temp ? `<span class="sx-chip">${temp}</span>` : ''}<span class="sx-chip">다음 결과에 반영</span></div>
+        ${(o.effects || []).length ? `<div class="sx-eff">${o.effects.map(e => `<div class="sx-row"><b>${esc(e.label)}</b>${e.chips.map(c => `<span class="sx-chip ${c.v > 0 ? 'up' : 'down'}">${esc(c.t)}</span>`).join('')}</div>`).join('')}</div>` : ''}
+        ${S.sci ? `<p class="sx-sci">${esc(S.sci)}</p>` : ''}
         <div class="sx-bar"><i></i></div>
         <div class="sx-close">화면을 누르면 닫혀요</div>
       </div>

@@ -459,3 +459,14 @@ body.boardmode{padding:0}
 .lv-surwrap{position:relative}
 .lv-peek{position:absolute;right:6px;top:6px;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:2px 7px;font-size:12px;color:var(--muted)}
 .lv-peek:hover{color:var(--ink);border-color:var(--ice)}
+
+/* 교사: 직접 만든 재난 */
+.lv-custom{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.lv-custom summary{cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.lv-cuform{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:8px 0}
+.lv-cuform .wide{grid-column:span 2}
+.lv-cuform input[type=number]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%}
+.lv-cuform textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 10px;width:100%;resize:vertical}
+.lv-cuform select{width:100%}
+.lv-peek.del{right:auto;left:6px;top:auto;bottom:6px}
+@media (max-width:760px){.lv-cuform{grid-template-columns:1fr 1fr}.lv-cuform .wide{grid-column:1/-1}}
