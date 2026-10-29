@@ -2,6 +2,7 @@ name: Firebase 배포 (main)
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -16,9 +17,21 @@ jobs:
       - name: 배포 설정 확인
         if: env.HAS_SA != 'true'
         run: echo "::warning::FIREBASE_SERVICE_ACCOUNT 비밀 값이 없어 배포를 건너뜁니다. README의 'Firebase 연결' 참고."
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Firebase Hosting 배포
         if: env.HAS_SA == 'true'
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          channelId: live
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          set +e
+          npx --yes firebase-tools deploy --only hosting --non-interactive > "$RUNNER_TEMP/deploy.log" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/deploy.log"
+          if [ $code -ne 0 ]; then
+            grep -iE "error|denied|permission|not |enable|404|403" "$RUNNER_TEMP/deploy.log" | grep -v '^\s*$' | tail -6 | while IFS= read -r l; do echo "::error::$l"; done
+          else
+            grep -iE "Hosting URL" "$RUNNER_TEMP/deploy.log" | while IFS= read -r l; do echo "::notice::$l"; done
+          fi
+          rm -f "$RUNNER_TEMP/sa.json"
+          exit $code
