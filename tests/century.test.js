@@ -81,6 +81,19 @@ test('밸런스: 저배출은 대부분 생존, 고배출은 대부분 멸종', 
   }
 });
 
+test('수업 모드 밸런스: 6모둠 기준 저배출 5+ · 중간 3~4 · 고배출 1 정도 생존', () => {
+  const { rates } = require('./sim.js');
+  const R = rates(150), avg = s => E.ANIMAL_ORDER.reduce((t, a) => t + R[s][a], 0) / E.ANIMAL_ORDER.length;
+  for (const a of E.ANIMAL_ORDER) {
+    assert.ok(R.low[a] >= 0.85, `${a} 저배출 ${R.low[a]}`);
+    assert.ok(R.mid[a] >= 0.42 && R.mid[a] <= 0.75, `${a} 중간 ${R.mid[a]}`);
+    assert.ok(R.high[a] >= 0.05 && R.high[a] <= 0.30, `${a} 고배출 ${R.high[a]}`);
+  }
+  assert.ok(avg('low') * 6 >= 5, '저배출 평균 ' + avg('low'));
+  assert.ok(avg('mid') * 6 >= 3 && avg('mid') * 6 <= 4, '중간 평균 ' + avg('mid'));
+  assert.ok(avg('high') * 6 >= 0.6 && avg('high') * 6 <= 1.5, '고배출 평균 ' + avg('high'));
+});
+
 test('다수결: 가장 많은 표, 동점은 같은 시드면 같은 결과', () => {
   assert.equal(E.tally({ a: { c: 1 }, b: { c: 1 }, c: { c: 0 } }, 2, 's').winner, 1);
   const t1 = E.tally({ a: { c: 0 }, b: { c: 1 } }, 2, 'seed'), t2 = E.tally({ a: { c: 0 }, b: { c: 1 } }, 2, 'seed');

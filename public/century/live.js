@@ -286,7 +286,7 @@ const LIVE = (function () {
         ${num('cuT', '°C (−0.5~0.5)', d.t, 0.05, -0.5, 0.5)}
         ${num('cuPop', '개체 수', d.pop, 1, -25, 25)}${num('cuEnergy', '에너지(먹이·지방)', d.energy, 1, -25, 25)}${num('cuHealth', '건강', d.health, 1, -25, 25)}${num('cuHab', '서식지(계속)', d.hab, 1, -25, 25)}
       </div>
-      <p class="muted" style="font-size:12.5px">피해 수치는 −25~+25, 모든 동물에 같은 크기로 적용돼요(이름은 동물마다 바뀌어 보여요). 대상은 위쪽 '대상' 목록을 따라요.</p>
+      <p class="muted" style="font-size:12.5px">피해 수치는 −25~+25, 모든 동물에 같은 크기로 적용돼요(이름은 동물마다 바뀌어 보여요). 대상은 위쪽 '대상' 목록을 따라요.<br>강도 감각(중간 배출, 후반 한 번 기준): 세 칸 모두 −3이면 가벼운 시련, −5면 생존 모둠이 1개쯤 줄고, −10이면 절반 가까이 줄어요. 슈퍼 엘니뇨 한 번도 절반 가까이 줄여요.</p>
       <div class="lv-btns"><button class="btn" id="cuPeek">미리보기</button><button class="btn" id="cuSave">보관함에 저장</button><button class="btn hot" id="cuFire">저장하고 일으키기</button><button class="btn" id="cuReset">비우기</button></div>
     </details>`;
   }

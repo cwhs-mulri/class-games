@@ -1,5 +1,5 @@
 // 오프라인 캐시: HTML·JS·CSS는 네트워크 우선(수업 중 업데이트가 바로 반영), 이미지·글꼴·three.js는 캐시 우선
-const VERSION = 'v5';
+const VERSION = 'v6';
 const CACHE = 'class-games-' + VERSION;
 const CORE = [
   '/', '/index.html', '/hub.css', '/manifest.webmanifest', '/shared/pwa.js',

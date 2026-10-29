@@ -27,7 +27,7 @@ const ANIMALS = {
     key: 'bear', letter: 'B', name: '북극곰', place: '북극해', habName: '해빙 면적', energyName: '지방 비축', popName: '개체군', healthName: '건강',
     tagline: '얼음이 사라지면 사냥할 발판도 사라진다',
     threat: '해빙 감소 → 사냥 기간 단축',
-    sens: { hab: 76, heat: 0, acid: 0 },
+    sens: { hab: 84, heat: 0, acid: 0 },
     prep: { food: '물범', special: '눈 굴 자리', hazard: '차가운 바다', goal: '얼음 위에서 물범을 사냥해 지방을 모으세요. 해빙은 60초 동안 점점 녹아요. 물속에서는 느려지고 체력이 줄어요. 북쪽 육지의 눈 굴 자리를 찾으면 새끼를 키우기 좋아요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '북극 기온 상승', '해빙 감소', '사냥 기간 단축', '굶주림 · 번식 실패'],
     intro: { id: 'b0', title: '얼음 위의 봄', text: '물범 사냥철이 시작됐다. 해빙 위 숨구멍 앞에서 몇 시간이고 숨을 죽인다.',
@@ -79,7 +79,7 @@ const ANIMALS = {
     key: 'penguin', letter: 'P', name: '황제펭귄', place: '남극 해안', habName: '정착빙', energyName: '체지방', popName: '번식 군집', healthName: '건강',
     tagline: '새끼가 자랄 때까지 얼음이 버텨 줘야 한다',
     threat: '정착빙 조기 붕괴 → 새끼 익사',
-    sens: { hab: 66, heat: 0, acid: 0 },
+    sens: { hab: 72, heat: 0, acid: 0 },
     prep: { food: '크릴', special: '단단한 번식지', hazard: '표범물범', goal: '바다에 뛰어들어 크릴을 모으세요. 물속에서는 빠르지만 표범물범을 조심하세요. 얼음 위의 단단한 번식지를 찾으면 새끼를 지키기 좋아요. 얼음 가장자리는 점점 갈라져요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '남극 바다 수온 상승', '정착빙 조기 붕괴', '새끼 익사 · 크릴 감소', '번식 실패'],
     intro: { id: 'p0', title: '겨울 번식지로', text: '영하 40도의 겨울. 수컷들은 알을 발등에 올리고 서로 몸을 붙여 거대한 허들을 만든다.',
@@ -129,7 +129,7 @@ const ANIMALS = {
     key: 'coral', letter: 'C', name: '산호', place: '열대 산호초', habName: '수온 적합도', energyName: '영양분', popName: '산호 면적', healthName: '공생조류',
     tagline: '바다가 1~2°C만 뜨거워져도 하얗게 질린다',
     threat: '해양 열파 → 백화 · 산성화',
-    sens: { hab: 59, heat: 5, acid: 0.03 },
+    sens: { hab: 70, heat: 0.5, acid: 0.01 },
     prep: { food: '플랑크톤', special: '공생조류', hazard: '해양 열파', goal: '산호 유생이 되어 플랑크톤을 먹고, 초록빛 공생조류를 모으세요. 뜨거운 바닷물(빨간 영역)은 점점 넓어져요. 왕관불가사리도 피하세요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화 + 바다의 CO₂ 흡수', '수온 상승 · 해양 산성화', '공생조류 방출(백화) · 골격 약화', '영양 부족', '산호 폐사'],
     intro: { id: 'c0', title: '산란의 밤', text: '보름달이 뜬 밤, 산호들이 일제히 분홍빛 알과 정자 묶음을 내뿜었다. 바다가 별처럼 반짝인다.',
@@ -179,7 +179,7 @@ const ANIMALS = {
     key: 'pollock', letter: 'F', name: '명태', place: '동해', habName: '냉수대', energyName: '먹이', popName: '어군', healthName: '건강',
     tagline: '차가운 동해가 사라지면 갈 곳이 없다',
     threat: '동해 수온 상승 → 냉수대 축소',
-    sens: { hab: 69, heat: 3.3, acid: 0 },
+    sens: { hab: 84, heat: 0.5, acid: 0 },
     prep: { food: '동물성 플랑크톤', special: '산란장', hazard: '따뜻한 물 · 그물', goal: '명태 떼를 이끌고 차가운 바다에서 플랑크톤을 먹으세요. 남쪽에서 따뜻한 물이 점점 올라와요(주황 영역). 그물도 피하세요. 북서쪽 연안의 산란장을 찾으면 어군이 늘어요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '동해 수온 상승', '냉수대 축소 · 먹이 변화', '서식지 북상 (+ 어린 명태 남획)', '동해 명태 감소'],
     intro: { id: 'f0', title: '동해의 겨울', text: '차가운 북한 한류를 따라 동해 연안으로 산란하러 내려왔다.',
@@ -507,7 +507,7 @@ QUIZ.push(
 // ---- 시드 난수 ----
 function hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function rng(seed) { let a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-const TUNE = { f0: 10, f1: 0.30, up: 42, e0: 45, h0: 55, hb: 60, hd: 5 };
+const TUNE = { f0: 10, f1: 0.30, up: 42, e0: 45, h0: 55, hb: 60, hd: 4 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function shuffle(arr, r) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -591,7 +591,8 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
   }
   const { T, ppm } = genClimate(scenKey, gen, st, surprises);
   const A = ANIMALS[animal];
-  const hab = clamp(baseHab(animal, T, ppm) + st.habMod, 0, 100);
+  // 기본 서식지가 바닥나도 보호 활동(habMod)으로 지켜 낸 만큼은 남는다
+  const hab = clamp(Math.max(0, baseHab(animal, T, ppm)) + st.habMod, 0, 100);
   const food = TUNE.f0 + hab * TUNE.f1 + st.foodMod;
   st.energy = clamp(st.energy + food - TUNE.up, 0, 100);
   let dh = st.energy < 25 ? -14 : st.energy >= 60 ? 5 : 0;
@@ -665,7 +666,7 @@ function advance(run) {
 }
 function currentHab(run) {
   const g = Math.min(run.gen, GENS - 1), { T, ppm } = genClimate(run.scen, g, run, []);
-  return clamp(baseHab(run.animal, T, ppm) + run.habMod, 0, 100);
+  return clamp(Math.max(0, baseHab(run.animal, T, ppm)) + run.habMod, 0, 100);
 }
 function currentT(run) { return genClimate(run.scen, Math.min(run.gen, GENS - 1), run, []).T; }
 
