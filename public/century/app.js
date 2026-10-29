@@ -73,15 +73,16 @@ function renderHome(){
   const saved = load(), resume = saved && saved.run && saved.run.phase !== 'end' ? saved.run : null;
   const sel = state.sel, A = ANIMALS[sel.animal];
   app.innerHTML = `<div class="wrap">
-    <div class="brand"><div class="lg"><a class="backlink" href="/" aria-label="수업 게임 모음으로">←</a><span class="therm">${icon('therm')}</span>통합과학2 · 환경과 에너지 · 온실 효과와 지구 온난화</div><button class="btn" id="toTeacher">교사 화면</button></div>
+    <div class="brand"><div class="lg"><a class="backlink" href="/" aria-label="수업 게임 모음으로">←</a><span class="therm">${icon('therm')}</span>통합과학2 · 환경과 에너지 · 온실 효과와 지구 온난화</div><button class="btn" id="toTeacher">결과 코드 모으기(한 기기 모드)</button></div>
+    <section class="card classmode"><div><div class="eyebrow">수업 모드 · 교사 로그인 · 전자칠판 · 학생 휴대폰 실시간 연동</div><h2>반 전체가 함께하는 200년 생존기</h2><p class="muted">학생은 QR로 접속해 모둠 화면에서 투표하고, 전자칠판에는 모둠별 3D 서식지가 뜹니다. 교사는 기습 이벤트와 특임대를 운영해요.</p></div><div class="cm-btns"><a class="btn hot lg" href="#teacher">교사로 수업 열기</a><a class="btn lg" href="#join">학생으로 참여</a></div></section>
     <section class="hero">
-      <div class="stageBox" id="heroStage"><div class="hero-title"><h1>100년<br>생존기</h1><p>${A.name}이 되어 ${A.place}에서 2030년부터 2120년까지, 10세대를 버텨라.</p></div><span class="yearchip">${A.place} · 2030년대</span></div>
+      <div class="stageBox" id="heroStage"><div class="hero-title"><h1>200년<br>생존기</h1><p>${A.name}이 되어 ${A.place}에서 1920년대부터 2110년대까지, 20세대를 버텨라.</p></div><span class="yearchip">${A.place} · 2030년대</span></div>
       <div class="card setup">
         ${resume ? `<div class="resume"><span><b>${esc(resume.team)}</b> · ${ANIMALS[resume.animal].name} · ${resume.gen+1}세대 기록 중</span><button class="btn ice" id="resume">이어서 쓰기</button></div>`:''}
         <div><div class="step-h"><span class="n">1</span>어떤 동물로 살아남을까?</div></div>
         <div class="animals">${ANIMAL_ORDER.map(k=>{ const a=ANIMALS[k]; return `<button class="animal" data-animal="${k}" aria-pressed="${sel.animal===k}"><b>${a.name}</b><span class="pl">${a.place}</span><span class="th">${a.threat}</span></button>`; }).join('')}</div>
         <div><div class="step-h"><span class="n">2</span>인류는 온실 기체를 얼마나 배출할까?</div></div>
-        <div class="scens">${SCEN_ORDER.map(k=>{ const s=SCENARIOS[k]; return `<button class="scen" style="--sc:${SCOL[k]}" data-scen="${k}" aria-pressed="${sel.scen===k}"><b>${s.name}</b><span class="t">+${f1(s.T[7])}°C</span><small>2100년 · ${s.code}<br>${s.desc}</small></button>`; }).join('')}</div>
+        <div class="scens">${SCEN_ORDER.map(k=>{ const s=SCENARIOS[k]; return `<button class="scen" style="--sc:${SCOL[k]}" data-scen="${k}" aria-pressed="${sel.scen===k}"><b>${s.name}</b><span class="t">+${f1(s.T[18])}°C</span><small>2100년대 · ${s.code}<br>${s.desc}</small></button>`; }).join('')}</div>
         <form id="startForm" style="display:flex;flex-direction:column;gap:10px">
           <div class="step-h"><span class="n">3</span>모둠 정보</div>
           <div class="two"><div><label for="gcode">게임 코드</label><input type="text" id="gcode" inputmode="numeric" maxlength="8" value="1103"></div>
@@ -93,7 +94,7 @@ function renderHome(){
     </section>
     <section class="card howto">
       <div><span class="k">60″</span><div><b>준비</b><p>3D 서식지에서 60초 동안 먹이와 특별 자원을 모은다. 서식지는 그 사이에도 변한다.</p></div></div>
-      <div><span class="k">10×</span><div><b>생존 일지</b><p>10년마다 한 세대. 사건을 읽고 모둠이 토론해 선택한다. 과학 무전 퀴즈를 맞히면 보급품.</p></div></div>
+      <div><span class="k">20×</span><div><b>생존 일지</b><p>10년마다 한 세대. 1920년대 역사에서 출발해 미래로 간다. 과학 무전 퀴즈를 맞히면 보급품.</p></div></div>
       <div><span class="k">3↔</span><div><b>엔딩과 비교</b><p>같은 선택을 저배출·중간·고배출 세계에서 했다면? 원인 사슬로 정리한다.</p></div></div>
     </section></div>`;
   mount3D($('#heroStage'), sel.animal, { hab: 100 - (SCENARIOS[sel.scen].T[0]-1.2)*30, pop: 70, health: 90, T: SCENARIOS[sel.scen].T[0] }, true);
@@ -127,7 +128,7 @@ function renderPrep(){
   } else if (prepUI.phase === 'sum'){
     const r = prepUI.res, tmp = newRun(run.code, run.team, run.animal, run.scen); applyPrep(tmp, r);
     ui.innerHTML = `<div class="ov"><div class="brief">
-      <div class="eyebrow">준비 결과</div><h2>준비 끝. 이제 <em>100년</em>이다</h2>
+      <div class="eyebrow">준비 결과</div><h2>준비 끝. 이제 <em>200년</em>이다</h2>
       <div class="sum">
         <div><div class="k">${A.prep.food}</div><div class="v">${r.food}</div><div class="d">${A.energyName} ${tmp.energy}</div></div>
         <div><div class="k">${A.prep.special}</div><div class="v">${r.special}</div><div class="d">${A.popName} ${tmp.pop}</div></div>
@@ -157,7 +158,7 @@ function startArena(){
 
 // ---------- 생존 일지 ----------
 function climateHTML(){
-  const S = SCENARIOS[run.scen], g = Math.min(run.gen, GENS-1), T = S.T[g];
+  const S = SCENARIOS[run.scen], g = Math.min(run.gen, GENS-1), T = currentT(run);
   return `<div class="climate"><div class="temp"><span class="v" style="color:${tCol(T)}">+${f1(T)}°C</span><small>지구 평균<br>기온 상승</small></div>
     <div><div class="num" style="font-size:15px;font-weight:600">${S.ppm[g]} ppm</div><small class="muted">CO₂ · <span style="color:${SCOL[run.scen]}">${S.name}</span></small></div>
     <div class="gens" aria-label="세대 진행">${DECADES.map((d,i)=>{ let c=''; if (run.extinctAt!=null && i===run.extinctAt) c='dead'; else if (i<run.gen || (i===run.gen && run.sub!=='event')) c='done'; if (i===run.gen && run.phase==='play') c+=' cur'; return `<span class="${c}" title="${d}년대">${i+1}</span>`; }).join('')}</div></div>`;
@@ -227,7 +228,7 @@ function renderPlay(){
     </div>
     ${journalHTML()}
   </div>`;
-  mount3D($('#playStage'), run.animal, { hab: currentHab(run), pop: run.pop, health: run.health, T: S.T[g] }, true);
+  mount3D($('#playStage'), run.animal, { hab: currentHab(run), pop: run.pop, health: run.health, T: currentT(run) }, true);
   bindPlay();
 }
 function bindPlay(){
@@ -258,11 +259,11 @@ function renderEnd(){
   const lastG = alive ? GENS-1 : run.extinctAt;
   const code = resultCode(run);
   app.innerHTML = `<div class="end">
-    <div class="brand"><div class="lg"><span class="therm">${icon('therm')}</span>100년 생존기 · ${esc(run.team)}</div><button class="btn" id="home">${icon('exit')} 처음 화면</button></div>
+    <div class="brand"><div class="lg"><span class="therm">${icon('therm')}</span>200년 생존기 · ${esc(run.team)}</div><button class="btn" id="home">${icon('exit')} 처음 화면</button></div>
     <section class="endhero">
       <div class="endpaper">
         <span class="stamp ${alive?'alive':'dead'}">${alive?'생존':'멸종'}</span>
-        <p class="jx">${alive ? `${A.name}는 ${A.place}에서 10세대를 버텨 ${DECADES[GENS-1]}년대를 맞았다. 남은 ${A.popName}는 ${run.pop}.` : `${A.name}의 기록은 ${run.extinctAt+1}세대, ${DECADES[run.extinctAt]}년대에 멈췄다. 지구 기온은 +${f1(S.T[run.extinctAt])}°C였다.`}</p>
+        <p class="jx">${alive ? `${A.name}는 ${A.place}에서 200년, 20세대를 버텨 ${DECADES[GENS-1]}년대를 맞았다. 남은 ${A.popName}는 ${run.pop}.` : `${A.name}의 기록은 ${run.extinctAt+1}세대, ${DECADES[run.extinctAt]}년대에 멈췄다. 지구 기온은 +${f1(S.T[run.extinctAt])}°C였다.`}</p>
         <p style="font-size:14px;color:var(--pink2)">${S.name} 경로(${S.code}) · ${A.habName}는 ${Math.round(currentHab(run))}까지 줄었다.</p>
         <div class="codebox" style="border-color:rgba(60,45,20,.3)"><div><div class="eyebrow" style="color:var(--pink2)">결과 코드</div><div class="big" style="color:var(--pink)">${code}</div></div><p style="font-size:13px;color:var(--pink2)">선생님께 결과 코드를 알려 주세요.</p></div>
       </div>
@@ -272,7 +273,7 @@ function renderEnd(){
       <div class="chain">${A.chain.map((c,i)=>`${i?'<i>→</i>':''}<span>${c}</span>`).join('')}</div></section>
     <section class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h2 style="font-size:24px">같은 선택, 다른 세계</h2><span class="muted" style="font-size:14px">여러분의 선택과 운을 그대로 두고 온실 기체 배출 경로만 바꿨어요</span></div>
       <div class="cmp">${SCEN_ORDER.map(k=>{ const s=SCENARIOS[k], r=reps[k], ok=r.survived>=GENS && r.pop>0; return `<div class="cmpc ${k===run.scen?'me':''}" style="--sc:${SCOL[k]}">
-        <div style="display:flex;justify-content:space-between"><b>${s.name}</b><span class="t">2100년 +${f1(s.T[7])}°C</span></div>
+        <div style="display:flex;justify-content:space-between"><b>${s.name}</b><span class="t">2100년대 +${f1(s.T[18])}°C</span></div>
         <div class="res" style="color:${ok?'var(--good)':'var(--bad)'}">${ok?`생존 · ${A.popName} ${r.pop}`:`${r.survived+1}세대에 멸종`}</div>
         ${popChart(r.popHist, SCOL[k])}
         <small class="muted">${k===run.scen?'우리 모둠이 겪은 세계':s.desc}</small></div>`; }).join('')}</div>
@@ -295,7 +296,7 @@ function tempChart(){
   let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="배출 시나리오별 기온 상승">`;
   for(let v=0;v<=ymax;v++) s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#24344F"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="#97A7BF">${v}°</text>`;
   s+=`<line x1="${pl}" x2="${W-pr}" y1="${y(1.5)}" y2="${y(1.5)}" stroke="#97A7BF" stroke-dasharray="4 4"/><text x="${W-pr+4}" y="${y(1.5)+4}" font-size="10.5" fill="#97A7BF">1.5°C</text>`;
-  [0,2,4,7,9].forEach(i=>s+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#97A7BF">${DECADES[i]}</text>`);
+  [0,5,10,15,19].forEach(i=>s+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="#97A7BF">${DECADES[i]}</text>`);
   SCEN_ORDER.forEach(k=>{ const S=SCENARIOS[k]; s+=`<path d="${S.T.map((t,i)=>(i?'L':'M')+x(i)+' '+y(t)).join('')}" fill="none" stroke="${SCOL[k]}" stroke-width="3"/><text x="${x(GENS-1)+6}" y="${y(S.T[GENS-1])+4}" font-size="11.5" font-weight="700" fill="${SCOL[k]}">${S.name}</text>`; });
   return s+'</svg>';
 }
@@ -353,11 +354,19 @@ function render(){
   else { state.view='home'; renderHome(); }
 }
 function start(data){
+  if (typeof LIVE !== 'undefined' && LIVE.claims()) { LIVE.start(); return; }
   const s = (data && data.state) ? data : load();
+  if (s && s.run && s.run.v !== 2) s.run = null; // 100년판 저장 기록은 버림
   if (s){ if (s.sel) state.sel = s.sel; state.tcode = s.tcode || null;
     if (s.run && (s.view==='play' || s.view==='end')){ run = s.run; state.view = s.view; }
     else if (s.view==='teacher') state.view='teacher'; }
   render();
 }
+window.addEventListener('hashchange', () => {
+  if (typeof LIVE !== 'undefined' && LIVE.claims()) { LIVE.start(); return; }
+  if (typeof LIVE !== 'undefined') LIVE.stop();
+  document.body.classList.remove('boardmode');
+  render();
+});
 start(null);
 })();

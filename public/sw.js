@@ -1,12 +1,13 @@
-// 오프라인 캐시: HTML은 네트워크 우선, 나머지(js·css·이미지·글꼴)는 캐시를 먼저 보여 주고 뒤에서 갱신
-const VERSION = 'v1';
+// 오프라인 캐시: HTML·JS·CSS는 네트워크 우선(수업 중 업데이트가 바로 반영), 이미지·글꼴·three.js는 캐시 우선
+const VERSION = 'v3';
 const CACHE = 'class-games-' + VERSION;
 const CORE = [
   '/', '/index.html', '/hub.css', '/manifest.webmanifest', '/shared/pwa.js',
   '/icons/icon-192.png', '/icons/icon-512.png', '/img/energy-city.webp', '/img/century.webp',
   '/vendor/three.min.js',
   '/energy-city/', '/energy-city/style.css', '/energy-city/engine.js', '/energy-city/city3d.js', '/energy-city/app.js',
-  '/century/', '/century/style.css', '/century/engine.js', '/century/world3d.js', '/century/app.js',
+  '/century/', '/century/style.css', '/century/engine.js', '/century/world3d.js', '/century/board3d.js', '/century/live.js', '/century/app.js',
+  '/shared/net.js', '/shared/qrlib.js', '/shared/firebase-config.js',
 ];
 
 self.addEventListener('install', (e) => {
@@ -22,7 +23,8 @@ self.addEventListener('fetch', (e) => {
   const sameOrigin = url.origin === location.origin;
   const isFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!sameOrigin && !isFont) return;
-  if (req.mode === 'navigate') {
+  const fresh = req.mode === 'navigate' || (sameOrigin && /\.(js|css|html|webmanifest)$/.test(url.pathname) && !url.pathname.startsWith('/vendor/'));
+  if (fresh) { // 코드는 항상 최신을 먼저, 오프라인일 때만 캐시
     e.respondWith(fetch(req).then((res) => { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); return res; })
       .catch(() => caches.match(req).then((r) => r || caches.match('/'))));
     return;

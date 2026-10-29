@@ -17,7 +17,7 @@ jobs:
       - name: 배포 설정 확인
         if: env.HAS_SA != 'true'
         run: echo "::warning::FIREBASE_SERVICE_ACCOUNT 비밀 값이 없어 배포를 건너뜁니다. README의 'Firebase 연결' 참고."
-      - name: Firebase Hosting 배포
+      - name: Firebase 배포 (Hosting + Realtime Database 규칙)
         if: env.HAS_SA == 'true'
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -25,7 +25,7 @@ jobs:
           printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           set +e
-          npx --yes firebase-tools deploy --only hosting --non-interactive > "$RUNNER_TEMP/deploy.log" 2>&1
+          npx --yes firebase-tools deploy --only hosting,database --non-interactive > "$RUNNER_TEMP/deploy.log" 2>&1
           code=$?
           cat "$RUNNER_TEMP/deploy.log"
           if [ $code -ne 0 ]; then

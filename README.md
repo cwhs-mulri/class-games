@@ -5,9 +5,17 @@
 | 게임 | 단원 | 형식 |
 |---|---|---|
 | [에너지 도시 경영](public/energy-city/) | 02 발전과 신재생 에너지 · 전기 에너지의 생산과 수송 | 모둠 2차시 · 3D 도시 · 6년 경영 |
-| [100년 생존기](public/century/) | 03 온실 효과와 지구 온난화 | 모둠 1차시 · 60초 준비 + 10세대 생존 일지 |
+| [200년 생존기](public/century/) | 03 온실 효과와 지구 온난화 | 반 전체 실시간 약 25분 · 교사·전자칠판·학생 휴대폰 · 60초 준비 + 20세대 다수결 |
 
 두 게임 모두 교사 화면이 있습니다(사건 공개, 결과 코드 검증·집계, 개념 정리).
+
+### 200년 생존기 수업 모드
+- 교사: `/century/#teacher` → Google 로그인(등록된 교사 계정) → 수업 만들기 → 전자칠판 화면 열기
+- 전자칠판: `/century/#board/수업코드` — 모둠별 3D 서식지, 특임대·기습 이벤트 공지, 과학 무전, 엔딩 비교
+- 학생: QR(`/century/#join/수업코드`) → 이름·모둠 선택 → 선택지·퀴즈 투표(모둠 다수결), 특임대 능력
+- 진행 엔진은 교사 화면에서 돈다. 수업 중에는 교사 화면 탭을 닫지 않는다.
+- 주소 끝에 `?local`을 붙이면 Firebase 없이 한 기기의 여러 탭으로 시험할 수 있다(예: `/century/?local#teacher`).
+- 교사 계정 추가: `public/shared/firebase-config.js`의 `TEACHER_EMAILS`와 `database.rules.json`의 이메일을 함께 고친다.
 
 ## 폴더 구조
 
@@ -17,14 +25,18 @@ public/                 Firebase Hosting으로 그대로 배포되는 폴더 (�
   manifest.webmanifest  앱 설치 정보
   sw.js                 오프라인 캐시(서비스 워커)
   shared/pwa.js         서비스 워커 등록 · 설치 버튼
+  shared/net.js         실시간 연결(Firebase Realtime Database / 로컬 모드)
+  shared/firebase-config.js  Firebase 웹 설정 · 교사 이메일
   vendor/three.min.js   Three.js r128 (학교망에서 CDN이 막혀도 동작하도록 내장)
   energy-city/          에너지 도시 경영
     engine.js           게임 규칙(순수 함수, Node 테스트 가능)
     city3d.js           3D 도시
     app.js, style.css   화면
   century/              100년 생존기
-    engine.js           동물·사건·시나리오·퀴즈 데이터와 규칙
+    engine.js           동물·사건(1920~2110년대)·시나리오·퀴즈·특임대·기습 이벤트와 규칙
     world3d.js          3D 서식지 + 60초 준비 아레나
+    board3d.js          전자칠판: 모둠별 서식지를 한 캔버스에 나눠 그리기
+    live.js             수업 모드(교사·전자칠판·학생)
     app.js, style.css   화면
 tests/                  node:test 테스트 (규칙·밸런스·파일 참조)
 ```
@@ -52,7 +64,8 @@ npm test       # 엔진·밸런스·파일 참조 테스트
 
 ## 내용 수정
 
-- 100년 생존기 사건·선택지·과학 노트: `public/century/engine.js`의 `ANIMALS`
+- 200년 생존기 사건·선택지·과학 노트: `public/century/engine.js`의 `ANIMALS`(미래), `HISTORY`(1930~2010년대), `NOW`(2020년대)
+- 특임대 역할: `ROLES`, 기습 이벤트: `SURPRISES`
 - 과학 무전 퀴즈: `public/century/engine.js`의 `QUIZ`
 - 에너지 도시 발전소·사건·퀴즈: `public/energy-city/engine.js`
 - 수치를 바꾼 뒤에는 `npm test`로 밸런스 테스트를 확인하세요.

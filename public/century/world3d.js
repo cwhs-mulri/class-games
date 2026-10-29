@@ -109,129 +109,148 @@ const World3D = (function () {
     return (iconCache[kind] = new T.SpriteMaterial({ map: new T.CanvasTexture(c), depthTest: true, depthWrite: false, alphaTest: 0.1 }));
   }
 
-  // ---------- 바이옴 ----------
-  function clearRoot() {
-    if (root) { scene.remove(root); }
-    root = new T.Group(); scene.add(root);
-    popGroup = new T.Group(); root.add(popGroup);
-    B = { pops: [] };
-  }
-  function waterPlane(color, opacity) {
-    const m = new T.MeshLambertMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
-    const w = new T.Mesh(new T.PlaneGeometry(240, 240), m); w.rotation.x = -Math.PI / 2; w.receiveShadow = true; root.add(w); B.waterMat = m; return w;
-  }
-  function buildBiome(key) {
-    clearRoot(); biome = key;
-    const r = srand(key.length * 97 + 7);
-    const S = SKIES[key];
-    if (key === 'bear') {
-      waterPlane(S.water, 1);
-      B.landMat = new T.MeshLambertMaterial({ color: 0xF2F6F8 });
-      root.add(mesh(new T.BoxGeometry(90, 2, 16), B.landMat, 0, 0.5, -25));
-      for (let i = 0; i < 7; i++) { const h = 3 + r() * 4; root.add(mesh(new T.ConeGeometry(4 + r() * 3, h, 7), B.landMat, -36 + i * 12 + r() * 4, 1.5 + h / 2, -27 - r() * 4)); }
-      B.floes = [];
-      let tries = 0;
-      while (B.floes.length < 24 && tries < 900) {
-        tries++; const rad = 1.8 + r() * 2.6, x = -25 + r() * 50, z = -14 + r() * 29;
-        if (B.floes.some(f => Math.hypot(f.x - x, f.z - z) < f.r + rad + 0.6)) continue;
-        const m = mesh(new T.CylinderGeometry(rad, rad * 1.08, 0.5, 7), mat(0xEAF4F8), x, 0.18, z); m.rotation.y = r() * 3;
-        root.add(m); B.floes.push({ mesh: m, x, z, r: rad, k: 1, ph: r() * 6 });
-      }
-      B.floes.sort((a, b) => a.z - b.z); // 북쪽(음수 z) 먼저 남음
-    } else if (key === 'penguin') {
-      waterPlane(S.water, 1);
-      root.add(mesh(new T.BoxGeometry(90, 5, 10), mat(0xDCEAF3), 0, 2.5, -26));
-      B.slab = mesh(new T.BoxGeometry(70, 0.7, 1), mat(0xEEF5FA), 0, 0.3, -14);
-      root.add(B.slab);
-      B.bergs = [];
-      for (let i = 0; i < 7; i++) { const b = mesh(new T.BoxGeometry(2 + r() * 3, 1.5 + r() * 2.5, 2 + r() * 3), mat(0xD6E9F5), -24 + r() * 48, 0.6, 2 + r() * 13); b.rotation.y = r() * 3; root.add(b); B.bergs.push(b); }
-    } else if (key === 'coral') {
-      { const sb = mesh(new T.PlaneGeometry(240, 240), mat(0xCDBB8C), 0, -2.6, 0); sb.rotation.x = -Math.PI / 2; root.add(sb); }
-      waterPlane(S.water, 0.38);
-      root.add(mesh(new T.CylinderGeometry(6, 8, 3, 18), mat(0xF0E0B5), 30, -1.2, -20));
-      B.corals = [];
-      for (let i = 0; i < 46; i++) {
-        const h = coralHead(r); const x = -26 + r() * 52, z = -15 + r() * 30;
-        h.position.set(x, -2.6, z); h.scale.setScalar(0.9 + r() * 0.8); h.rotation.y = r() * 6; root.add(h);
-        B.corals.push({ g: h, rank: r() });
-      }
-      B.reefFish = [];
-      for (let i = 0; i < 9; i++) { const f = fishModel([0xFFB703, 0x3A86FF, 0xFB5607][i % 3]); f.scale.setScalar(0.45); root.add(f); B.reefFish.push({ g: f, a: r() * 6, rad: 6 + r() * 14, y: -1.4 + r() * 0.8, sp: 0.3 + r() * 0.4, cx: (r() - 0.5) * 20, cz: (r() - 0.5) * 14 }); }
-    } else if (key === 'pollock') {
-      { const sb = mesh(new T.PlaneGeometry(240, 240), mat(0x0E2A45), 0, -4, 0); sb.rotation.x = -Math.PI / 2; root.add(sb); }
-      waterPlane(S.water, 0.62);
-      B.landMat = new T.MeshLambertMaterial({ color: 0x5E8A4E });
-      root.add(mesh(new T.BoxGeometry(14, 3, 90), B.landMat, -33, 1, 0));
-      for (let i = 0; i < 6; i++) { const h = 3 + r() * 4; root.add(mesh(new T.ConeGeometry(3 + r() * 2, h, 6), B.landMat, -35 + r() * 4, 2.5 + h / 2, -30 + i * 12)); }
-      B.cold = new T.Mesh(new T.PlaneGeometry(52, 1), new T.MeshBasicMaterial({ color: 0x8FDBFF, transparent: true, opacity: 0.28, depthWrite: false }));
-      B.cold.rotation.x = -Math.PI / 2; B.cold.position.set(0, 0.06, 0); root.add(B.cold);
-      B.warm = new T.Mesh(new T.PlaneGeometry(52, 1), new T.MeshBasicMaterial({ color: 0xFF8A3D, transparent: true, opacity: 0.26, depthWrite: false }));
-      B.warm.rotation.x = -Math.PI / 2; B.warm.position.set(0, 0.07, 0); root.add(B.warm);
-      B.fishes = [];
+  // ---------- 서식지 하나(장면 하나에 그리는 단위) ----------
+  // 전자칠판처럼 여러 모둠을 한 화면에 그릴 때 장면마다 하나씩 만든다
+  function makeHabitat(scene, sun) {
+    let root, popGroup, B = { pops: [] }, biome = null;
+    // ---------- 바이옴 ----------
+    function clearRoot() {
+      if (root) { scene.remove(root); }
+      root = new T.Group(); scene.add(root);
+      popGroup = new T.Group(); root.add(popGroup);
+      B = { pops: [] };
     }
-    scene.background = new T.Color(S.sky); scene.fog.color = new T.Color(S.sky);
-  }
-  function setEdge(edge) { // 명태: edge보다 북쪽(z 작음)은 찬물
-    const zmin = -16, zmax = 16, e = Math.max(zmin, Math.min(zmax, edge));
-    const ch = e - zmin, wh = zmax - e;
-    B.cold.visible = ch > 0.05; B.warm.visible = wh > 0.05;
-    if (B.cold.visible) { B.cold.scale.y = ch; B.cold.position.z = zmin + ch / 2; }
-    if (B.warm.visible) { B.warm.scale.y = wh; B.warm.position.z = e + wh / 2; }
-    B.edge = e;
-  }
-  function setSlab(depth) { B.slab.scale.z = depth; B.slab.position.z = -21 + depth / 2; B.iceEdge = -21 + depth; }
+    function waterPlane(color, opacity) {
+      const m = new T.MeshLambertMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+      const w = new T.Mesh(new T.PlaneGeometry(240, 240), m); w.rotation.x = -Math.PI / 2; w.receiveShadow = true; root.add(w); B.waterMat = m; return w;
+    }
+    function buildBiome(key) {
+      clearRoot(); biome = key;
+      const r = srand(key.length * 97 + 7);
+      const S = SKIES[key];
+      if (key === 'bear') {
+        waterPlane(S.water, 1);
+        B.landMat = new T.MeshLambertMaterial({ color: 0xF2F6F8 });
+        root.add(mesh(new T.BoxGeometry(90, 2, 16), B.landMat, 0, 0.5, -25));
+        for (let i = 0; i < 7; i++) { const h = 3 + r() * 4; root.add(mesh(new T.ConeGeometry(4 + r() * 3, h, 7), B.landMat, -36 + i * 12 + r() * 4, 1.5 + h / 2, -27 - r() * 4)); }
+        B.floes = [];
+        let tries = 0;
+        while (B.floes.length < 24 && tries < 900) {
+          tries++; const rad = 1.8 + r() * 2.6, x = -25 + r() * 50, z = -14 + r() * 29;
+          if (B.floes.some(f => Math.hypot(f.x - x, f.z - z) < f.r + rad + 0.6)) continue;
+          const m = mesh(new T.CylinderGeometry(rad, rad * 1.08, 0.5, 7), mat(0xEAF4F8), x, 0.18, z); m.rotation.y = r() * 3;
+          root.add(m); B.floes.push({ mesh: m, x, z, r: rad, k: 1, ph: r() * 6 });
+        }
+        B.floes.sort((a, b) => a.z - b.z); // 북쪽(음수 z) 먼저 남음
+      } else if (key === 'penguin') {
+        waterPlane(S.water, 1);
+        root.add(mesh(new T.BoxGeometry(90, 5, 10), mat(0xDCEAF3), 0, 2.5, -26));
+        B.slab = mesh(new T.BoxGeometry(70, 0.7, 1), mat(0xEEF5FA), 0, 0.3, -14);
+        root.add(B.slab);
+        B.bergs = [];
+        for (let i = 0; i < 7; i++) { const b = mesh(new T.BoxGeometry(2 + r() * 3, 1.5 + r() * 2.5, 2 + r() * 3), mat(0xD6E9F5), -24 + r() * 48, 0.6, 2 + r() * 13); b.rotation.y = r() * 3; root.add(b); B.bergs.push(b); }
+      } else if (key === 'coral') {
+        { const sb = mesh(new T.PlaneGeometry(240, 240), mat(0xCDBB8C), 0, -2.6, 0); sb.rotation.x = -Math.PI / 2; root.add(sb); }
+        waterPlane(S.water, 0.38);
+        root.add(mesh(new T.CylinderGeometry(6, 8, 3, 18), mat(0xF0E0B5), 30, -1.2, -20));
+        B.corals = [];
+        for (let i = 0; i < 46; i++) {
+          const h = coralHead(r); const x = -26 + r() * 52, z = -15 + r() * 30;
+          h.position.set(x, -2.6, z); h.scale.setScalar(0.9 + r() * 0.8); h.rotation.y = r() * 6; root.add(h);
+          B.corals.push({ g: h, rank: r() });
+        }
+        B.reefFish = [];
+        for (let i = 0; i < 9; i++) { const f = fishModel([0xFFB703, 0x3A86FF, 0xFB5607][i % 3]); f.scale.setScalar(0.45); root.add(f); B.reefFish.push({ g: f, a: r() * 6, rad: 6 + r() * 14, y: -1.4 + r() * 0.8, sp: 0.3 + r() * 0.4, cx: (r() - 0.5) * 20, cz: (r() - 0.5) * 14 }); }
+      } else if (key === 'pollock') {
+        { const sb = mesh(new T.PlaneGeometry(240, 240), mat(0x0E2A45), 0, -4, 0); sb.rotation.x = -Math.PI / 2; root.add(sb); }
+        waterPlane(S.water, 0.62);
+        B.landMat = new T.MeshLambertMaterial({ color: 0x5E8A4E });
+        root.add(mesh(new T.BoxGeometry(14, 3, 90), B.landMat, -33, 1, 0));
+        for (let i = 0; i < 6; i++) { const h = 3 + r() * 4; root.add(mesh(new T.ConeGeometry(3 + r() * 2, h, 6), B.landMat, -35 + r() * 4, 2.5 + h / 2, -30 + i * 12)); }
+        B.cold = new T.Mesh(new T.PlaneGeometry(52, 1), new T.MeshBasicMaterial({ color: 0x8FDBFF, transparent: true, opacity: 0.28, depthWrite: false }));
+        B.cold.rotation.x = -Math.PI / 2; B.cold.position.set(0, 0.06, 0); root.add(B.cold);
+        B.warm = new T.Mesh(new T.PlaneGeometry(52, 1), new T.MeshBasicMaterial({ color: 0xFF8A3D, transparent: true, opacity: 0.26, depthWrite: false }));
+        B.warm.rotation.x = -Math.PI / 2; B.warm.position.set(0, 0.07, 0); root.add(B.warm);
+        B.fishes = [];
+      }
+      scene.background = new T.Color(S.sky); scene.fog.color = new T.Color(S.sky);
+    }
+    function setEdge(edge) { // 명태: edge보다 북쪽(z 작음)은 찬물
+      const zmin = -16, zmax = 16, e = Math.max(zmin, Math.min(zmax, edge));
+      const ch = e - zmin, wh = zmax - e;
+      B.cold.visible = ch > 0.05; B.warm.visible = wh > 0.05;
+      if (B.cold.visible) { B.cold.scale.y = ch; B.cold.position.z = zmin + ch / 2; }
+      if (B.warm.visible) { B.warm.scale.y = wh; B.warm.position.z = e + wh / 2; }
+      B.edge = e;
+    }
+    function setSlab(depth) { B.slab.scale.z = depth; B.slab.position.z = -21 + depth / 2; B.iceEdge = -21 + depth; }
 
-  // ---------- 상태 반영 (일지 단계) ----------
-  function populate(n, maker, placer) {
-    while (B.pops.length > n) { const p = B.pops.pop(); popGroup.remove(p.g); }
-    while (B.pops.length < n) { const g = maker(); popGroup.add(g); B.pops.push({ g, i: B.pops.length, ph: Math.random() * 6 }); }
-    B.pops.forEach((p, i) => placer(p, i));
-  }
-  function setState(o) {
-    if (!inited || mode !== 'diorama') return;
-    const hab = o.hab / 100, popF = o.pop / 100, Tk = (o.T - 1.2) / 3.8;
-    const S = SKIES[biome];
-    const sky = lerpC(S.sky, 0xE6B98E, Tk * 0.75);
-    scene.background = sky; scene.fog.color = sky;
-    sun.intensity = 0.85 + Tk * 0.2;
-    if (biome === 'bear') {
-      const n = Math.round(B.floes.length * hab);
-      B.floes.forEach((f, i) => { f.mesh.visible = i < n; f.k = 0.55 + 0.45 * hab; f.mesh.scale.set(f.k, 1, f.k); });
-      B.landMat.color = lerpC(0xF2F6F8, 0x8C8A6A, Tk * 1.2);
-      const vis = B.floes.filter(f => f.mesh.visible).sort((a, b) => b.r - a.r);
-      populate(Math.min(8, Math.ceil(o.pop / 12)), bearModel, (p, i) => {
-        const f = vis[i % Math.max(1, vis.length)];
-        if (f) p.g.position.set(f.x + (i >= vis.length ? 1 : 0), 0.43, f.z); else p.g.position.set(-14 + i * 4, 1.5, -19);
-        p.g.rotation.y = i * 1.7; p.g.scale.setScalar(i % 3 === 2 ? 0.6 : 0.9);
-      });
-    } else if (biome === 'penguin') {
-      setSlab(2 + 11 * hab);
-      B.bergs.forEach((b, i) => b.visible = i < 3 + Math.round(4 * (1 - hab)));
-      const n = Math.min(16, Math.ceil(o.pop / 6));
-      populate(n, penguinModel, (p, i) => {
-        const cols = 8, x = -12 + (i % cols) * 3.2 + (Math.floor(i / cols) % 2) * 1.6, z = -19 + Math.floor(i / cols) * 2.2;
-        p.g.position.set(x, 0.65, Math.min(z, B.iceEdge - 0.8)); p.g.rotation.y = -Math.PI / 2 + (i % 3 - 1) * 0.3; p.g.scale.setScalar(i % 4 === 3 ? 0.55 : 0.85);
-      });
-    } else if (biome === 'coral') {
-      const health = o.health / 100;
-      const sorted = B.corals.slice().sort((a, b) => a.rank - b.rank);
-      const alive = Math.round(sorted.length * Math.min(1, popF * 1.15));
-      const healthyN = Math.round(alive * health);
-      sorted.forEach((c, i) => {
-        const m = c.g.userData.m;
-        if (i < healthyN) { m.color.set(c.g.userData.col); c.g.visible = true; c.g.scale.y = c.g.scale.x; }
-        else if (i < alive) { m.color.set(0xF6F3EC); c.g.visible = true; }
-        else { m.color.set(0x7A6E62); c.g.visible = true; }
-      });
-      B.waterMat.color = lerpC(S.water, 0x5FA39A, Tk);
-      B.reefFish.forEach((f, i) => f.g.visible = i < Math.round(9 * popF * health + 1));
-    } else if (biome === 'pollock') {
-      setEdge(-16 + 32 * hab);
-      B.waterMat.color = lerpC(S.water, 0x2A6E8A, Tk);
-      const n = Math.min(16, Math.ceil(o.pop / 6));
-      populate(n, () => fishModel(), (p, i) => { p.cx = -6 + (i % 4) * 3; p.cz = Math.min(B.edge - 3, -12 + Math.floor(i / 4) * 2); p.g.scale.setScalar(0.7); });
+    // ---------- 상태 반영 (일지 단계) ----------
+    function populate(n, maker, placer) {
+      while (B.pops.length > n) { const p = B.pops.pop(); popGroup.remove(p.g); }
+      while (B.pops.length < n) { const g = maker(); popGroup.add(g); B.pops.push({ g, i: B.pops.length, ph: Math.random() * 6 }); }
+      B.pops.forEach((p, i) => placer(p, i));
     }
+    function setState(o) {
+      const hab = o.hab / 100, popF = o.pop / 100, Tk = (o.T - 1.2) / 3.8;
+      const S = SKIES[biome];
+      const sky = lerpC(S.sky, 0xE6B98E, Tk * 0.75);
+      scene.background = sky; scene.fog.color = sky;
+      sun.intensity = 0.85 + Tk * 0.2;
+      if (biome === 'bear') {
+        const n = Math.round(B.floes.length * hab);
+        B.floes.forEach((f, i) => { f.mesh.visible = i < n; f.k = 0.55 + 0.45 * hab; f.mesh.scale.set(f.k, 1, f.k); });
+        B.landMat.color = lerpC(0xF2F6F8, 0x8C8A6A, Tk * 1.2);
+        const vis = B.floes.filter(f => f.mesh.visible).sort((a, b) => b.r - a.r);
+        populate(Math.min(8, Math.ceil(o.pop / 12)), bearModel, (p, i) => {
+          const f = vis[i % Math.max(1, vis.length)];
+          if (f) p.g.position.set(f.x + (i >= vis.length ? 1 : 0), 0.43, f.z); else p.g.position.set(-14 + i * 4, 1.5, -19);
+          p.g.rotation.y = i * 1.7; p.g.scale.setScalar(i % 3 === 2 ? 0.6 : 0.9);
+        });
+      } else if (biome === 'penguin') {
+        setSlab(2 + 11 * hab);
+        B.bergs.forEach((b, i) => b.visible = i < 3 + Math.round(4 * (1 - hab)));
+        const n = Math.min(16, Math.ceil(o.pop / 6));
+        populate(n, penguinModel, (p, i) => {
+          const cols = 8, x = -12 + (i % cols) * 3.2 + (Math.floor(i / cols) % 2) * 1.6, z = -19 + Math.floor(i / cols) * 2.2;
+          p.g.position.set(x, 0.65, Math.min(z, B.iceEdge - 0.8)); p.g.rotation.y = -Math.PI / 2 + (i % 3 - 1) * 0.3; p.g.scale.setScalar(i % 4 === 3 ? 0.55 : 0.85);
+        });
+      } else if (biome === 'coral') {
+        const health = o.health / 100;
+        const sorted = B.corals.slice().sort((a, b) => a.rank - b.rank);
+        const alive = Math.round(sorted.length * Math.min(1, popF * 1.15));
+        const healthyN = Math.round(alive * health);
+        sorted.forEach((c, i) => {
+          const m = c.g.userData.m;
+          if (i < healthyN) { m.color.set(c.g.userData.col); c.g.visible = true; c.g.scale.y = c.g.scale.x; }
+          else if (i < alive) { m.color.set(0xF6F3EC); c.g.visible = true; }
+          else { m.color.set(0x7A6E62); c.g.visible = true; }
+        });
+        B.waterMat.color = lerpC(S.water, 0x5FA39A, Tk);
+        B.reefFish.forEach((f, i) => f.g.visible = i < Math.round(9 * popF * health + 1));
+      } else if (biome === 'pollock') {
+        setEdge(-16 + 32 * hab);
+        B.waterMat.color = lerpC(S.water, 0x2A6E8A, Tk);
+        const n = Math.min(16, Math.ceil(o.pop / 6));
+        populate(n, () => fishModel(), (p, i) => { p.cx = -6 + (i % 4) * 3; p.cz = Math.min(B.edge - 3, -12 + Math.floor(i / 4) * 2); p.g.scale.setScalar(0.7); });
+      }
+    }
+
+    function tick(dt, clock) {
+      if (biome === 'bear' && B.floes) B.floes.forEach(f => f.mesh.position.y = 0.18 + Math.sin(clock * 0.8 + f.ph) * 0.06);
+      if (biome === 'penguin') B.pops.forEach(p => p.g.rotation.z = Math.sin(clock * 2 + p.ph) * 0.05);
+      if (biome === 'pollock') B.pops.forEach(p => { const a = clock * 0.5 + p.i * 0.7; p.g.position.set(p.cx + Math.cos(a) * 3, -1.4, p.cz + Math.sin(a) * 1.4); p.g.rotation.y = -a - Math.PI / 2; });
+      if (biome === 'coral') B.reefFish.forEach(f => { f.a += dt * f.sp; f.g.position.set(f.cx + Math.cos(f.a) * f.rad, f.y, f.cz + Math.sin(f.a) * f.rad * 0.5); f.g.rotation.y = -f.a - Math.PI / 2; });
+      if (biome === 'bear') B.pops.forEach(p => p.g.position.y += Math.sin(clock * 1.5 + p.ph) * 0.002);
+    }
+
+    return { build: buildBiome, setState, setEdge, setSlab, tick, get B() { return B; }, get root() { return root; }, get popGroup() { return popGroup; }, get biome() { return biome; } };
   }
+  let H = null;
+  function buildBiome(key) { H.build(key); B = H.B; root = H.root; popGroup = H.popGroup; biome = key; }
+  function setEdge(e) { H.setEdge(e); }
+  function setSlab(d) { H.setSlab(d); }
+  function setState(o) { if (!inited || mode !== 'diorama') return; H.setState(o); }
 
   // ---------- 카메라 · 조작 ----------
   function placeCamera() {
@@ -443,6 +462,7 @@ const World3D = (function () {
     hemi = new T.HemisphereLight(0xFFFFFF, 0x445566, 0.6); scene.add(hemi);
     sun = new T.DirectionalLight(0xFFF2DD, 0.9); sun.position.set(25, 45, 20); sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -40, right: 40, top: 40, bottom: -40, far: 140 }); scene.add(sun);
+    H = makeHabitat(scene, sun);
     buildBiome('bear'); placeCamera(); bindControls();
     new ResizeObserver(resize).observe(stage);
     requestAnimationFrame(frame);
@@ -461,12 +481,7 @@ const World3D = (function () {
     if (mode === 'arena') arenaFrame(dt, realDt);
     else {
       if (autoRot && !autoRotPaused) { cam.theta += dt * 0.08; placeCamera(); }
-      // 대기 애니메이션
-      if (biome === 'bear' && B.floes) B.floes.forEach(f => f.mesh.position.y = 0.18 + Math.sin(clock * 0.8 + f.ph) * 0.06);
-      if (biome === 'penguin') B.pops.forEach(p => p.g.rotation.z = Math.sin(clock * 2 + p.ph) * 0.05);
-      if (biome === 'pollock') B.pops.forEach(p => { const a = clock * 0.5 + p.i * 0.7; p.g.position.set(p.cx + Math.cos(a) * 3, -1.4, p.cz + Math.sin(a) * 1.4); p.g.rotation.y = -a - Math.PI / 2; });
-      if (biome === 'coral') B.reefFish.forEach(f => { f.a += dt * f.sp; f.g.position.set(f.cx + Math.cos(f.a) * f.rad, f.y, f.cz + Math.sin(f.a) * f.rad * 0.5); f.g.rotation.y = -f.a - Math.PI / 2; });
-      if (biome === 'bear') B.pops.forEach(p => p.g.position.y += Math.sin(clock * 1.5 + p.ph) * 0.002);
+      H.tick(dt, clock);
     }
     renderer.render(scene, camera);
   }
@@ -478,6 +493,7 @@ const World3D = (function () {
     setState(o) { if (init()) setState(o); },
     setAutoRotate(on) { autoRot = !!on && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); autoRotPaused = false; },
     startArena, stopArena,
+    makeHabitat, SKIES, srand,
     get mode() { return mode; },
   };
 })();

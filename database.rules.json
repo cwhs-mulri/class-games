@@ -1,0 +1,49 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        "meta": { ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'" },
+        "live": { ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'" },
+        "groups": { ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'" },
+        "players": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.hasChildren(['name', 'g']) && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 20 && newData.child('g').isString() && newData.child('g').val().length <= 4"
+          }
+        },
+        "votes": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          "$gen": { "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.child('c').isNumber() && newData.child('c').val() >= 0 && newData.child('c').val() <= 2 && newData.child('g').isString()"
+          } }
+        },
+        "quiz": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          "$gen": { "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.child('a').isNumber() && newData.child('a').val() >= 0 && newData.child('a').val() <= 3 && newData.child('g').isString()"
+          } }
+        },
+        "abil": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          "$gen": { "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.child('g').isString()"
+          } }
+        },
+        "prep": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.child('food').isNumber() && newData.child('food').val() >= 0 && newData.child('food').val() <= 60 && newData.child('special').isNumber() && newData.child('special').val() >= 0 && newData.child('special').val() <= 5 && newData.child('damage').isNumber() && newData.child('damage').val() >= 0 && newData.child('damage').val() <= 300 && newData.child('g').isString()"
+          }
+        }
+      }
+    }
+  }
+}
