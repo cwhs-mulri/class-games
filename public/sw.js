@@ -1,12 +1,12 @@
 // 오프라인 캐시: HTML·JS·CSS는 네트워크 우선(수업 중 업데이트가 바로 반영), 이미지·글꼴·three.js는 캐시 우선
-const VERSION = 'v3';
+const VERSION = 'v4';
 const CACHE = 'class-games-' + VERSION;
 const CORE = [
   '/', '/index.html', '/hub.css', '/manifest.webmanifest', '/shared/pwa.js',
   '/icons/icon-192.png', '/icons/icon-512.png', '/img/energy-city.webp', '/img/century.webp',
   '/vendor/three.min.js',
   '/energy-city/', '/energy-city/style.css', '/energy-city/engine.js', '/energy-city/city3d.js', '/energy-city/app.js',
-  '/century/', '/century/style.css', '/century/engine.js', '/century/world3d.js', '/century/board3d.js', '/century/live.js', '/century/app.js',
+  '/century/', '/century/style.css', '/century/engine.js', '/century/world3d.js', '/century/board3d.js', '/century/splash.js', '/century/live.js', '/century/app.js',
   '/shared/net.js', '/shared/qrlib.js', '/shared/firebase-config.js',
 ];
 

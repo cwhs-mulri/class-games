@@ -403,3 +403,59 @@ body.boardmode{padding:0}
 .lv-kick:hover{color:var(--bad);border-color:var(--bad)}
 .lv-kick.sure{color:#fff;background:var(--bad);border-color:var(--bad)}
 .lv-pick button:disabled{opacity:.45;cursor:not-allowed}
+
+/* ===================== 재난 스플래시 ===================== */
+.splash-x{position:fixed;inset:0;z-index:100;display:grid;place-items:center;overflow:hidden;color:#fff;cursor:pointer;
+  background:radial-gradient(ellipse at 50% 120%,var(--sx2),var(--sx1) 70%);animation:sxIn .35s ease-out both}
+.splash-x.out{animation:sxOut .45s ease-in both}
+@keyframes sxIn{from{opacity:0;transform:scale(1.04)}}
+@keyframes sxOut{to{opacity:0;transform:scale(.96)}}
+.sx-fx{position:absolute;inset:0;width:100%;height:100%}
+.sx-flash{position:absolute;inset:0;pointer-events:none;background:rgba(255,40,30,.55);animation:sxFlash 1.6s ease-out both}
+.splash-x.good .sx-flash{background:rgba(92,242,154,.35)}
+@keyframes sxFlash{0%,20%,40%{opacity:1}10%,30%{opacity:.15}100%{opacity:0}}
+.sx-tick{position:absolute;left:0;right:0;height:38px;display:flex;align-items:center;overflow:hidden;white-space:nowrap;font-weight:800;letter-spacing:.06em;font-size:15px;color:#1A0A00;background:var(--sxa)}
+.splash-x:not(.good) .sx-tick{background:repeating-linear-gradient(-45deg,#FFC400 0 22px,#1A1A1A 22px 44px)}
+.splash-x:not(.good) .sx-tick span{background:#FFC400;padding:4px 10px;border-radius:4px}
+.sx-tick.top{top:env(safe-area-inset-top,0px)}.sx-tick.bottom{bottom:env(safe-area-inset-bottom,0px)}
+.sx-tick span{display:inline-block;padding-left:100%;animation:sxTick 18s linear infinite}
+.sx-tick.bottom span{animation-direction:reverse}
+@keyframes sxTick{to{transform:translateX(-100%)}}
+.sx-body{position:relative;max-width:1100px;width:calc(100% - 40px);max-height:100%;display:flex;flex-direction:column;align-items:center;text-align:center;gap:clamp(6px,1.4vh,12px);padding:52px 0}
+.sx-icon{font-size:clamp(56px,min(11vw,14vh),140px)!important}
+.sx-kicker{font-weight:800;letter-spacing:.14em;color:var(--sxa);font-size:clamp(14px,2vw,22px);animation:sxUp .5s .25s ease-out both}
+.sx-icon{font-size:clamp(64px,11vw,140px);line-height:1;filter:drop-shadow(0 8px 30px rgba(0,0,0,.5));animation:sxPop .7s .4s cubic-bezier(.2,1.6,.4,1) both}
+.sx-title{font-family:var(--display);font-weight:400;font-size:min(9vw,calc(1000px / var(--tl)),124px);white-space:nowrap;line-height:1;letter-spacing:.02em;text-shadow:0 0 40px var(--sxa),0 6px 0 rgba(0,0,0,.35);animation:sxSlam .6s .55s cubic-bezier(.2,1.4,.4,1) both}
+.splash-x:not(.good) .sx-title{animation:sxSlam .6s .55s cubic-bezier(.2,1.4,.4,1) both,sxShake .45s 1.15s 2}
+.sx-text{font-size:clamp(17px,2.4vw,28px);max-width:40ch;animation:sxUp .5s 1s ease-out both}
+.sx-meta{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;animation:sxUp .5s 1.3s ease-out both}
+.sx-chip{display:inline-flex;align-items:center;font-weight:700;font-size:clamp(13px,1.6vw,17px);padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3)}
+.sx-chip.down{background:rgba(255,80,80,.25);border-color:rgba(255,120,120,.7)}
+.sx-chip.up{background:rgba(92,242,154,.22);border-color:rgba(92,242,154,.7)}
+.sx-eff{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;animation:sxUp .5s 1.6s ease-out both}
+.sx-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
+.sx-row b{font-size:clamp(14px,1.8vw,19px)}
+.sx-sci{max-width:62ch;font-size:clamp(13px,1.5vw,16px);color:rgba(255,255,255,.82);background:rgba(0,0,0,.35);border-radius:14px;padding:10px 14px;animation:sxUp .5s 2s ease-out both}
+.sx-bar{width:min(420px,70%);height:5px;border-radius:9px;background:rgba(255,255,255,.2);overflow:hidden;animation:sxUp .4s 2.2s both}
+.sx-bar i{display:block;height:100%;background:var(--sxa);animation:sxBar linear both;transform-origin:left}
+@keyframes sxBar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.sx-close{font-size:13px;color:rgba(255,255,255,.6)}
+@keyframes sxUp{from{opacity:0;transform:translateY(16px)}}
+@keyframes sxPop{from{opacity:0;transform:scale(.2) rotate(-20deg)}}
+@keyframes sxSlam{from{opacity:0;transform:scale(2.4);filter:blur(6px)}}
+@keyframes sxShake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.splash-x.phone .sx-body{gap:10px;padding:52px 0}
+.splash-x.phone .sx-sci{display:none}
+.splash-x.phone .sx-eff .sx-row b{display:block;width:100%}
+.splash-x.phone .sx-title{white-space:normal;font-size:min(11vw,64px)}
+@media (prefers-reduced-motion:reduce){.splash-x *{animation:none!important}.sx-bar{display:none}}
+
+/* 전자칠판 상단: 진행 중 재난 배지 */
+.lv-pend{display:flex;gap:8px;flex-wrap:wrap}
+.lv-pend span{font-weight:700;font-size:15px;padding:6px 12px;border-radius:99px;background:rgba(255,59,48,.18);border:1.5px solid rgba(255,90,80,.8);animation:pendPulse 1.4s ease-in-out infinite}
+.lv-pend span.good{background:rgba(92,242,154,.15);border-color:rgba(92,242,154,.8);animation:none}
+@keyframes pendPulse{50%{box-shadow:0 0 0 6px rgba(255,59,48,.18)}}
+.lv-sound{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px}
+.lv-surwrap{position:relative}
+.lv-peek{position:absolute;right:6px;top:6px;border:1px solid var(--line);background:var(--panel);border-radius:7px;padding:2px 7px;font-size:12px;color:var(--muted)}
+.lv-peek:hover{color:var(--ink);border-color:var(--ice)}

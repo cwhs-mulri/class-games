@@ -101,6 +101,19 @@ const LIVE = (function () {
     return '';
   }
   const noticeFresh = n => n && NET.now() - (n.t || 0) < 14000;
+  // 기습 이벤트가 어느 모둠에 무엇을 하는지 → 스플래시용
+  function splashEffects(key, target, onlyGid) {
+    const S = SURPRISES[key], out = [];
+    for (const gid of order()) {
+      if (target !== 'all' && target !== gid) continue;
+      if (onlyGid && onlyGid !== gid) continue;
+      const g = G(gid), A = ANIMALS[g.animal], e = S.e[g.animal] || {};
+      const L = { pop: A.popName, energy: A.energyName, health: A.healthName, hab: A.habName };
+      out.push({ label: (onlyGid ? '우리 ' : g.name + ' ') + A.name, chips: Object.keys(e).filter(k => e[k]).map(k => ({ t: `${L[k]} ${e[k] > 0 ? '+' : ''}${e[k]}`, v: e[k] })) });
+    }
+    return out;
+  }
+  const targetName = t => t === 'all' ? '모든 모둠' : (G(t) ? G(t).name : '');
 
   // =====================================================================
   //  교사 화면 + 진행 엔진
@@ -352,9 +365,9 @@ const LIVE = (function () {
             <label class="lv-auto"><input type="checkbox" id="cAuto" ${M.auto !== false ? 'checked' : ''}> 시간 끝나면 자동 진행</label>
           </div></div>
       </section>
-      <section class="card"><h3>기습 이벤트</h3><p class="muted">누르는 즉시 전자칠판과 학생 휴대폰에 경보가 뜨고, 이번 세대 결과에 반영돼요.</p>
+      <section class="card"><h3>기습 이벤트</h3><p class="muted">누르는 즉시 전자칠판과 대상 모둠 휴대폰 화면 전체에 재난 속보 스플래시가 뜨고, 이번 세대 결과에 반영돼요. "미리보기"는 이 화면에서만 보여 줘요.</p>
         <div class="lv-row"><label for="cTarget" style="margin:0">대상</label><select id="cTarget">${tgOpts}</select></div>
-        <div class="lv-sur">${SURPRISE_ORDER.map(k => { const S = SURPRISES[k]; return `<button class="lv-surbtn ${k === 'deal' ? 'good' : ''}" data-sur="${k}"><span>${S.icon}</span><b>${S.name}</b><small>${S.dT ? (S.dT > 0 ? '+' : '') + S.dT + '°C 이번 세대' : S.permT ? (S.permT > 0 ? '+' : '') + S.permT + '°C 계속' : '환경 피해'}</small></button>`; }).join('')}</div>
+        <div class="lv-sur">${SURPRISE_ORDER.map(k => { const S = SURPRISES[k]; return `<div class="lv-surwrap"><button class="lv-surbtn ${k === 'deal' ? 'good' : ''}" data-sur="${k}"><span>${S.icon}</span><b>${S.name}</b><small>${S.dT ? (S.dT > 0 ? '+' : '') + S.dT + '°C 이번 세대' : S.permT ? (S.permT > 0 ? '+' : '') + S.permT + '°C 계속' : '환경 피해'}</small></button><button class="lv-peek" data-peek="${k}" title="내 화면에서만 스플래시 미리보기">미리보기</button></div>`; }).join('')}</div>
         ${Object.keys(L.pending || {}).length ? `<p>대기 중: ${Object.values(L.pending).map(p => `<span class="chip down">${SURPRISES[p.key].name} → ${p.target === 'all' ? '모두' : esc(G(p.target).name)}</span>`).join(' ')}</p>` : ''}
       </section>
       <section class="card"><div class="lv-row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">모둠 현황</h3>
@@ -375,6 +388,7 @@ const LIVE = (function () {
     on('cMore', () => liveUpdate(L.paused ? { left: (L.left || 0) + 15000, total: (L.total || 0) + 15000 } : { deadline: (L.deadline || NET.now()) + 15000, total: (L.total || 0) + 15000 }));
     const au = $('#cAuto'); if (au) au.onchange = () => NET.put(`${base()}/meta/auto`, au.checked);
     root.querySelectorAll('[data-sur]').forEach(b => b.onclick = () => fireSurprise(b.dataset.sur, $('#cTarget').value));
+    root.querySelectorAll('[data-peek]').forEach(b => b.onclick = e => { e.stopPropagation(); const t = $('#cTarget').value; Splash.show({ key: b.dataset.peek, mode: 'preview', target: targetName(t), effects: splashEffects(b.dataset.peek, t) }); });
     root.querySelectorAll('[data-move]').forEach(sel => sel.onchange = () => movePlayer(sel.dataset.move, sel.value));
     root.querySelectorAll('[data-kickarm]').forEach(b => b.onclick = () => { cur.kickArm = b.dataset.kickarm; renderTeacher(); });
     root.querySelectorAll('[data-kickx]').forEach(b => b.onclick = () => { cur.kickArm = null; renderTeacher(); });
@@ -405,7 +419,9 @@ const LIVE = (function () {
     const head = `<header class="lv-bhead">
       <div class="lv-btitle"><h1>200년 생존기</h1><span>${['lobby', 'prep'].includes(sub) ? '1920년대에서 출발' : `${gen + 1}세대 / ${GENS} · <b>${DECADES[gen]}년대</b>`}</span></div>
       <div class="lv-bphase"><span>${SUB_NAME[sub] || ''}</span><b data-clock></b><span class="lv-tbar"><i data-bar></i></span></div>
-      <div class="lv-bjoin"><img src="${qr}" alt="" width="64" height="64"><div><small>수업 코드</small><b>${esc(cur.code)}</b></div></div></header>`;
+      <button class="lv-sound" id="bSound">${Splash.soundOn ? '🔊 경보음 켜짐' : '🔈 경보음 켜기'}</button>
+      <div class="lv-bjoin"><img src="${qr}" alt="" width="64" height="64"><div><small>수업 코드</small><b>${esc(cur.code)}</b></div></div></header>
+      ${Object.keys(L.pending || {}).length ? `<div class="lv-pend">${Object.values(L.pending).map(p => `<span class="${p.key === 'deal' ? 'good' : ''}">${SURPRISES[p.key].icon} ${SURPRISES[p.key].name} → ${esc(targetName(p.target))} · 이번 세대 결과에 반영</span>`).join('')}</div>` : ''}`;
     const quizBand = Q ? `<div class="lv-qband"><div class="eyebrow">📡 과학 무전 · 모둠 다수결로 정답이면 보급품</div><h2>${Q.q}</h2><ol>${Q.a.map((a, i) => `<li class="${sub === 'quizres' && i === Q.c ? 'right' : ''}">${a}</li>`).join('')}</ol></div>` : '';
     const lobbyBand = sub === 'lobby' ? `<div class="lv-lobby"><img src="${qr}" alt="학생 접속 QR" width="220" height="220"><div><h2>휴대폰으로 QR을 찍어 접속하세요</h2><p>이름을 쓰고 우리 모둠을 고르면 돼요. 수업 코드 <b class="num">${esc(cur.code)}</b></p><p class="muted">${esc(joinURL(cur.code))}</p></div></div>` : '';
     const cards = order().map(gid => {
@@ -432,12 +448,13 @@ const LIVE = (function () {
       endBand = `<div class="lv-endband"><h2>200년의 기록 · 같은 선택을 다른 세계에서 했다면?</h2><div class="lv-endgrid">${ranked.map(({ gid, run }) => { const reps = SCEN_ORDER.map(k => [k, replay(run, k)]); return `<div><b>${esc(G(gid).name)} · ${ANIMALS[run.animal].name}</b>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${bar(r.pop, SCOL[k])}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}</div>`; }).join('')}</div><p>온난화의 속도는 동물이 아니라 인류의 배출량이 정한다.</p></div>`;
     }
     ui.innerHTML = head + lobbyBand + quizBand + `<main class="lv-grid n${order().length}">${cards}</main>` + endBand;
+    const sb = $('#bSound'); if (sb) sb.onclick = () => { Splash.enableSound(); schedule(); };
     Board3D.sync(order().map(gid => ({ id: gid, el: document.getElementById('v_' + gid), animal: G(gid).animal, state: groupState(gid) })));
     // 공지(특임대 · 기습 이벤트)
     const over = $('#bOver'), n = L.notice;
     if (noticeFresh(n) && cur.shownNotice !== n.t) {
       cur.shownNotice = n.t;
-      if (n.kind === 'surprise') over.innerHTML = `<div class="lv-over" role="alert">${noticeHTML(n)}</div>`;
+      if (n.kind === 'surprise') { over.innerHTML = ''; Splash.show({ key: n.key, mode: 'board', target: targetName(n.target), effects: splashEffects(n.key, n.target) }); }
       else if (n.kind === 'roles') over.innerHTML = `<div class="lv-over" role="alert"><div class="lv-rolesbox"><div class="eyebrow">특임대 편성 공지</div><h2>모둠별 특임대가 정해졌습니다</h2><div class="lv-rgrid">${order().map(gid => { const g = G(gid), ro = rolesOf(gid); return `<div><b>${esc(g.name)} · ${ANIMALS[g.animal].name}</b>${Object.entries(ro).map(([uid, k]) => { const r = roleOf(g.animal, k); const p = R.players[uid]; return `<p>★ <b>${esc(p ? p.name : '')}</b> — ${r.name}<br><small>${r.ability}: ${abilityDesc(g.animal, r.type)} (${ROLE_USES}번)</small></p>`; }).join('') || '<p class="muted">모둠원 없음</p>'}</div>`; }).join('')}</div></div></div>`;
       clearTimeout(cur.overT); cur.overT = setTimeout(() => { if ($('#bOver')) $('#bOver').innerHTML = ''; }, n.kind === 'roles' ? 16000 : 11000);
       over.onclick = () => { over.innerHTML = ''; };
@@ -554,7 +571,7 @@ const LIVE = (function () {
     const n = L.notice, al = $('#pAlert');
     if (al && noticeFresh(n) && cur.shownNotice !== n.t) {
       cur.shownNotice = n.t;
-      if (n.kind === 'surprise' && (n.target === 'all' || n.target === gid)) { al.innerHTML = `<div class="lv-over" role="alert">${noticeHTML(n)}</div>`; if (navigator.vibrate) try { navigator.vibrate(200); } catch (e) {} }
+      if (n.kind === 'surprise' && (n.target === 'all' || n.target === gid)) Splash.show({ key: n.key, mode: 'phone', target: n.target === 'all' ? '모든 모둠' : '우리 모둠', effects: splashEffects(n.key, n.target, gid) });
       if (n.kind === 'roles' && myRole) al.innerHTML = `<div class="lv-over" role="alert"><div class="lv-rolesbox"><div class="eyebrow">특임대 임명</div><h2>당신은 ${myRole.name}!</h2><p><b>${myRole.ability}</b>: ${abilityDesc(g.animal, myRole.type)}</p><p class="muted">투표 시간에 능력 버튼을 눌러 쓰세요. 한 판에 ${ROLE_USES}번까지.</p></div></div>`;
       clearTimeout(cur.alT); cur.alT = setTimeout(() => { al.innerHTML = ''; }, 9000);
       al.onclick = () => { al.innerHTML = ''; };
