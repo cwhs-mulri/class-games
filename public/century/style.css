@@ -391,3 +391,15 @@ body.boardmode{padding:0}
 .lv-alertbox .lv-alert .ic{font-size:44px}.lv-alertbox .lv-alert h2{font-size:34px}.lv-alertbox .lv-alert p{font-size:16px}
 @media (max-width:1100px){.lv-grid,.lv-grid.n4,.lv-grid.n7,.lv-grid.n8{grid-template-columns:repeat(2,1fr)}.lv-head{grid-template-columns:1fr}}
 @media (max-width:640px){.lv-grid{grid-template-columns:1fr!important}.lv-lobby{flex-direction:column}.lv-qband ol{grid-template-columns:1fr}.lv-alert{flex-direction:column}.lv-alert h2{font-size:34px}}
+
+/* 교사: 모둠 조정 */
+.lv-mems{display:flex;flex-wrap:wrap;gap:6px}
+.lv-mem{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:4px 6px 4px 10px;font-size:13px}
+.lv-mem small{color:var(--gold)}
+.lv-mem.done{border-color:rgba(74,222,128,.55)}
+.lv-mem.wait{border-color:rgba(251,191,36,.45)}
+.lv-mem select{padding:3px 6px;font-size:12px;border-radius:7px}
+.lv-kick{border:1px solid var(--line);border-radius:7px;padding:2px 7px;font-size:12px;color:var(--muted);background:transparent}
+.lv-kick:hover{color:var(--bad);border-color:var(--bad)}
+.lv-kick.sure{color:#fff;background:var(--bad);border-color:var(--bad)}
+.lv-pick button:disabled{opacity:.45;cursor:not-allowed}

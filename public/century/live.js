@@ -47,6 +47,8 @@ const LIVE = (function () {
   function schedule() { if (!cur || cur.pending) return; cur.pending = true; setTimeout(() => { if (!cur) return; cur.pending = false; render(); }, 30); }
   function render() {
     if (!cur) return;
+    const ae = document.activeElement;
+    if (cur.view === 'teacher' && ae && ae.tagName === 'SELECT' && ae.closest('#app')) { if (!cur.deferT) cur.deferT = setTimeout(() => { cur && (cur.deferT = null); schedule(); }, 700); return; }
     if (cur.view === 'teacher') renderTeacher();
     else if (cur.view === 'board') renderBoard();
     else renderJoin();
@@ -225,7 +227,7 @@ const LIVE = (function () {
     const code = form.code;
     const groups = {}, ord = [];
     form.groups.forEach((g, i) => { const id = 'g' + (i + 1); ord.push(id); groups[id] = g; });
-    const meta = { title: '200년 생존기', created: NET.now(), groups, order: ord, voteSec: form.voteSec, outSec: form.outSec, quizSec: form.quizSec, qresSec: DEF.qresSec, prepSec: DEF.prepSec, auto: true };
+    const meta = { title: '200년 생존기', created: NET.now(), groups, order: ord, voteSec: form.voteSec, outSec: form.outSec, quizSec: form.quizSec, maxPer: form.maxPer || 0, qresSec: DEF.qresSec, prepSec: DEF.prepSec, auto: true };
     await NET.update({ [roomPath(code) + '/meta']: meta, [roomPath(code) + '/live']: { sub: 'lobby', gen: 0, step: 1, deadline: 0, total: 1 } });
     openRoom(code);
     toast('수업을 만들었어요. 학생들에게 QR을 보여 주세요', 'good');
@@ -240,6 +242,35 @@ const LIVE = (function () {
     ch[`${base()}/live/notice`] = { kind: 'roles', t: NET.now() };
     await NET.update(ch);
     toast('특임대를 편성해 전자칠판에 공지했어요', 'good');
+  }
+  // ---- 모둠 조정 ----
+  async function movePlayer(uid, to) {
+    const p = R.players && R.players[uid]; if (!p || p.g === to) return;
+    const ch = { [`${base()}/players/${uid}/g`]: to, [`${base()}/groups/${p.g}/roles/${uid}`]: null };
+    await NET.update(ch);
+    toast(`${p.name} → ${G(to).name}`, 'good');
+  }
+  async function kickPlayer(uid) {
+    const p = R.players && R.players[uid]; if (!p) return;
+    await NET.update({ [`${base()}/players/${uid}`]: null, [`${base()}/groups/${p.g}/roles/${uid}`]: null, [`${base()}/prep/${uid}`]: null });
+    toast(`${p.name} 학생을 내보냈어요`);
+  }
+  // 많은 모둠에서 적은 모둠으로, 특임대가 아닌 학생부터 옮긴다
+  async function balanceGroups() {
+    const ids = order(), list = {}; ids.forEach(g => { list[g] = members(g); });
+    const total = ids.reduce((s, g) => s + list[g].length, 0); if (!total) return toast('접속한 학생이 없어요', 'bad');
+    const base_ = Math.floor(total / ids.length), extra = total % ids.length;
+    const target = {}; ids.forEach((g, i) => { target[g] = base_ + (i < extra ? 1 : 0); });
+    const ch = {}; let moved = 0;
+    for (;;) {
+      const over = ids.filter(g => list[g].length > target[g]).sort((a, b) => list[b].length - list[a].length)[0];
+      const under = ids.filter(g => list[g].length < target[g]).sort((a, b) => list[a].length - list[b].length)[0];
+      if (!over || !under) break;
+      const roles = rolesOf(over); const pickIdx = list[over].findIndex(m => !roles[m.uid]); const m = list[over].splice(pickIdx >= 0 ? pickIdx : list[over].length - 1, 1)[0];
+      list[under].push(m); ch[`${base()}/players/${m.uid}/g`] = under; ch[`${base()}/groups/${over}/roles/${m.uid}`] = null; moved++;
+    }
+    if (!moved) return toast('이미 고르게 나뉘어 있어요');
+    await NET.update(ch); toast(`${moved}명을 옮겨 인원을 맞췄어요`, 'good');
   }
   async function fireSurprise(key, target) {
     const id = 's' + NET.now().toString(36);
@@ -276,17 +307,18 @@ const LIVE = (function () {
           <div><label for="sN">모둠 수</label><input type="text" id="sN" value="${saved.n}" inputmode="numeric" maxlength="1"></div>
           <div><label for="sV">투표 시간(초)</label><input type="text" id="sV" value="${saved.voteSec}" inputmode="numeric"></div>
           <div><label for="sO">결과 보기(초)</label><input type="text" id="sO" value="${saved.outSec}" inputmode="numeric"></div>
-          <div><label for="sQ">퀴즈(초)</label><input type="text" id="sQ" value="${saved.quizSec}" inputmode="numeric"></div></div>
+          <div><label for="sQ">퀴즈(초)</label><input type="text" id="sQ" value="${saved.quizSec}" inputmode="numeric"></div>
+          <div><label for="sM">모둠 최대 인원</label><select id="sM">${[0, 3, 4, 5, 6].map(n => `<option value="${n}" ${(saved.maxPer ?? 5) === n ? 'selected' : ''}>${n ? n + '명' : '제한 없음'}</option>`).join('')}</select></div></div>
         <div class="lv-row"><div><label>배출 시나리오</label><div class="lv-seg">${SCEN_ORDER.map(k => `<button data-sc="${k}" aria-pressed="${!saved.mix && saved.scen === k}" style="--sc:${SCOL[k]}">${SCENARIOS[k].name}</button>`).join('')}<button data-sc="mix" aria-pressed="${saved.mix}">모둠마다 다르게</button></div></div></div>
         <div class="lv-groups">${Array.from({ length: saved.n }, (_, i) => `<div class="lv-g"><b>${i + 1}모둠</b><select id="sA${i}" aria-label="${i + 1}모둠 동물">${ANIMAL_ORDER.map(a => `<option value="${a}" ${animals[i] === a ? 'selected' : ''}>${ANIMALS[a].name}</option>`).join('')}</select><span class="chip" style="color:${SCOL[scens[i]]}">${SCENARIOS[scens[i]].name}</span></div>`).join('')}</div>
         <p class="muted">예상 진행 시간 약 <b>${total}분</b> (20세대 · 과학 무전 10회 · 60초 준비 포함, 모두 투표하면 더 빨라져요)</p>
         <button class="btn hot lg" id="sGo">수업 만들기</button>
       </section>
       <section class="card"><h3>이전 수업 이어서 열기</h3><div class="lv-row"><input type="text" id="sOld" placeholder="수업 코드" style="max-width:160px"><button class="btn" id="sOpen">열기</button></div></section></div>`;
-    const read = () => { saved.code = $('#sCode').value.trim() || saved.code; saved.n = Math.max(2, Math.min(8, +$('#sN').value || 6)); saved.voteSec = Math.max(15, +$('#sV').value || 40); saved.outSec = Math.max(5, +$('#sO').value || 10); saved.quizSec = Math.max(10, +$('#sQ').value || 25); for (let i = 0; i < 8; i++) { const s = document.getElementById('sA' + i); if (s) animals[i] = s.value; } };
+    const read = () => { saved.code = $('#sCode').value.trim() || saved.code; saved.n = Math.max(2, Math.min(8, +$('#sN').value || 6)); saved.voteSec = Math.max(15, +$('#sV').value || 40); saved.outSec = Math.max(5, +$('#sO').value || 10); saved.quizSec = Math.max(10, +$('#sQ').value || 25); saved.maxPer = +$('#sM').value; for (let i = 0; i < 8; i++) { const s = document.getElementById('sA' + i); if (s) animals[i] = s.value; } };
     root.querySelectorAll('input,select').forEach(el => el.onchange = () => { read(); setTimeout(renderTeacher, 0); });
     root.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { read(); if (b.dataset.sc === 'mix') saved.mix = true; else { saved.mix = false; saved.scen = b.dataset.sc; } renderTeacher(); });
-    $('#sGo').onclick = () => { read(); createRoom({ code: saved.code.replace(/[^0-9A-Za-z_-]/g, ''), voteSec: saved.voteSec, outSec: saved.outSec, quizSec: saved.quizSec, groups: Array.from({ length: saved.n }, (_, i) => ({ name: (i + 1) + '모둠', animal: animals[i], scen: scens[i] })) }); };
+    $('#sGo').onclick = () => { read(); createRoom({ code: saved.code.replace(/[^0-9A-Za-z_-]/g, ''), maxPer: saved.maxPer ?? 5, voteSec: saved.voteSec, outSec: saved.outSec, quizSec: saved.quizSec, groups: Array.from({ length: saved.n }, (_, i) => ({ name: (i + 1) + '모둠', animal: animals[i], scen: scens[i] })) }); };
     $('#sOpen').onclick = () => { const c = $('#sOld').value.trim(); if (c) openRoom(c); };
     const o = $('#tOut'); if (o) o.onclick = () => NET.logout();
   }
@@ -299,7 +331,10 @@ const LIVE = (function () {
       const box = sub === 'quiz' ? (R.quiz && R.quiz[gen]) : sub === 'prep' ? R.prep : (R.votes && R.votes[gen]);
       const done = ms.filter(m => box && box[m.uid]).length;
       return `<tr><td><b>${esc(g.name)}</b><br><small style="color:${SCOL[g.scen]}">${ANIMALS[g.animal].name} · ${SCENARIOS[g.scen].name}</small></td>
-        <td>${ms.map(m => `<span class="chip">${esc(m.name)}${roles[m.uid] ? ' ★' + esc((roleOf(g.animal, roles[m.uid]) || {}).name || '') : ''}</span>`).join(' ') || '<span class="muted">아직 없음</span>'}</td>
+        <td><div class="lv-mems">${ms.map(m => { const voted = box && box[m.uid]; return `<span class="lv-mem ${['event', 'quiz', 'prep'].includes(sub) ? (voted ? 'done' : 'wait') : ''}"><b>${esc(m.name)}</b>${roles[m.uid] ? `<small>★${esc((roleOf(g.animal, roles[m.uid]) || {}).name || '')}</small>` : ''}
+          <select data-move="${m.uid}" aria-label="${esc(m.name)} 모둠 옮기기">${order().map(o => `<option value="${o}" ${o === gid ? 'selected' : ''}>${esc(G(o).name)}</option>`).join('')}</select>
+          ${cur.kickArm === m.uid ? `<button class="lv-kick sure" data-kick="${m.uid}">내보내기 확인</button><button class="lv-kick" data-kickx="1">취소</button>` : `<button class="lv-kick" data-kickarm="${m.uid}" aria-label="${esc(m.name)} 내보내기">✕</button>`}</span>`; }).join('') || '<span class="muted">아직 없음</span>'}</div>
+          ${M.maxPer && ms.length > M.maxPer ? `<small class="err">최대 ${M.maxPer}명 초과</small>` : ''}</td>
         <td class="num">${run ? (st.alive ? Math.round(st.pop) : '멸종') : '–'}</td><td class="num">${run ? Math.round(st.energy) : '–'}</td><td class="num">${run ? Math.round(st.health) : '–'}</td><td class="num">${run ? Math.round(st.hab) : '–'}</td>
         <td class="num">${['event', 'quiz', 'prep'].includes(sub) ? `${done}/${ms.length}` : ''}</td></tr>`;
     }).join('');
@@ -322,7 +357,11 @@ const LIVE = (function () {
         <div class="lv-sur">${SURPRISE_ORDER.map(k => { const S = SURPRISES[k]; return `<button class="lv-surbtn ${k === 'deal' ? 'good' : ''}" data-sur="${k}"><span>${S.icon}</span><b>${S.name}</b><small>${S.dT ? (S.dT > 0 ? '+' : '') + S.dT + '°C 이번 세대' : S.permT ? (S.permT > 0 ? '+' : '') + S.permT + '°C 계속' : '환경 피해'}</small></button>`; }).join('')}</div>
         ${Object.keys(L.pending || {}).length ? `<p>대기 중: ${Object.values(L.pending).map(p => `<span class="chip down">${SURPRISES[p.key].name} → ${p.target === 'all' ? '모두' : esc(G(p.target).name)}</span>`).join(' ')}</p>` : ''}
       </section>
-      <section class="card"><h3>모둠 현황</h3><div class="scroll"><table class="lv-table"><thead><tr><th>모둠</th><th>모둠원 (★특임대)</th><th>개체군</th><th>에너지</th><th>건강</th><th>서식지</th><th>제출</th></tr></thead><tbody>${rows}</tbody></table></div></section>
+      <section class="card"><div class="lv-row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">모둠 현황</h3>
+        <div class="lv-btns"><label class="lv-auto" for="cMax">모둠 최대 인원</label><select id="cMax">${[0, 3, 4, 5, 6].map(n => `<option value="${n}" ${(M.maxPer || 0) === n ? 'selected' : ''}>${n ? n + '명' : '제한 없음'}</option>`).join('')}</select>
+        <button class="btn" id="cBalance">인원 고르게 나누기</button></div></div>
+        <p class="muted" style="font-size:13px">학생 옆 목록에서 모둠을 바꾸면 그 학생 휴대폰도 바로 새 모둠 화면으로 바뀝니다. ✕는 중복 접속이나 잘못 들어온 학생을 내보낼 때 쓰세요(그 휴대폰은 다시 참여 화면으로 돌아가요). 옮긴 학생의 특임대 역할은 사라져요.</p>
+        <div class="scroll"><table class="lv-table"><thead><tr><th>모둠</th><th>모둠원 (★특임대)</th><th>개체군</th><th>에너지</th><th>건강</th><th>서식지</th><th>제출</th></tr></thead><tbody>${rows}</tbody></table></div></section>
       <section class="card"><div class="lv-row"><button class="btn" id="cNew">새 수업 만들기</button>${sub === 'end' ? '' : ''}</div></section>
     </div>`;
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
@@ -336,6 +375,12 @@ const LIVE = (function () {
     on('cMore', () => liveUpdate(L.paused ? { left: (L.left || 0) + 15000, total: (L.total || 0) + 15000 } : { deadline: (L.deadline || NET.now()) + 15000, total: (L.total || 0) + 15000 }));
     const au = $('#cAuto'); if (au) au.onchange = () => NET.put(`${base()}/meta/auto`, au.checked);
     root.querySelectorAll('[data-sur]').forEach(b => b.onclick = () => fireSurprise(b.dataset.sur, $('#cTarget').value));
+    root.querySelectorAll('[data-move]').forEach(sel => sel.onchange = () => movePlayer(sel.dataset.move, sel.value));
+    root.querySelectorAll('[data-kickarm]').forEach(b => b.onclick = () => { cur.kickArm = b.dataset.kickarm; renderTeacher(); });
+    root.querySelectorAll('[data-kickx]').forEach(b => b.onclick = () => { cur.kickArm = null; renderTeacher(); });
+    root.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => { cur.kickArm = null; kickPlayer(b.dataset.kick); });
+    const mx = $('#cMax'); if (mx) mx.onchange = () => NET.put(`${base()}/meta/maxPer`, +mx.value);
+    on('cBalance', balanceGroups);
     on('cNew', () => { cur.unsubs.forEach(f => f()); cur.unsubs = []; cur.code = null; cur.opened = false; R = blank(); cur.setup = null; try { localStorage.removeItem('cg-century-teacher-code'); } catch (e) {} history.replaceState(null, '', '#teacher'); renderTeacher(); });
     tickClocks();
   }
@@ -428,17 +473,20 @@ const LIVE = (function () {
       ui.innerHTML = `<div class="card lv-joinbox"><div class="eyebrow">수업 코드 ${esc(cur.code)}</div><h2>200년 생존기</h2>
         <label for="jn">이름(또는 번호)</label><input type="text" id="jn" maxlength="12" value="${esc((cur.me && cur.me.name) || '')}">
         <div class="eyebrow" style="margin-top:6px">우리 모둠 고르기</div>
-        <div class="lv-pick">${order().map(gid => { const g = G(gid); return `<button data-g="${gid}"><b>${esc(g.name)}</b><span>${ANIMALS[g.animal].name}</span><small>${members(gid).length}명</small></button>`; }).join('')}</div>
+        <div class="lv-pick">${order().map(gid => { const g = G(gid), n = members(gid).length, full = M.maxPer && n >= M.maxPer; return `<button data-g="${gid}" ${full ? 'disabled' : ''}><b>${esc(g.name)}</b><span>${ANIMALS[g.animal].name}</span><small>${n}명${M.maxPer ? ' / ' + M.maxPer + '명' : ''}${full ? ' · 가득 참' : ''}</small></button>`; }).join('')}</div>
         <p class="err" id="jerr"></p></div>`;
       ui.querySelectorAll('[data-g]').forEach(b => b.onclick = async () => {
         const name = $('#jn').value.trim(); if (!name) { $('#jerr').textContent = '이름을 먼저 쓰세요.'; return; }
         await NET.ensureAnon();
+        if (M.maxPer && members(b.dataset.g).length >= M.maxPer) { $('#jerr').textContent = '그 모둠은 가득 찼어요. 다른 모둠을 고르세요.'; return; }
         await NET.put(`${roomPath(cur.code)}/players/${myUid()}`, { name, g: b.dataset.g, t: NET.now() });
         cur.me = { code: cur.code, name }; try { localStorage.setItem('cg-century-me', JSON.stringify(cur.me)); } catch (e) {}
       });
       return;
     }
     const gid = meP.g, g = G(gid); if (!g) { ui.innerHTML = '<div class="card">모둠 정보를 찾을 수 없어요.</div>'; return; }
+    if (cur.lastG && cur.lastG !== gid) toast(`선생님이 ${g.name}(${ANIMALS[g.animal].name})으로 옮겼어요`, 'good');
+    cur.lastG = gid;
     const A = ANIMALS[g.animal], st = groupState(gid), run = st.run, gen = Math.min(L.gen || 0, GENS - 1), sub = L.sub;
     const myRoleKey = rolesOf(gid)[uid], myRole = myRoleKey ? roleOf(g.animal, myRoleKey) : null, usedN = (usesOf(gid)[uid] || 0);
     const head = `<header class="lv-phead"><div><b>${esc(g.name)}</b> · ${A.name} <span class="muted">· ${esc(meP.name)}</span></div><div class="lv-pclock"><span>${sub === 'lobby' || sub === 'prep' ? SUB_NAME[sub] : `${DECADES[gen]}년대 · ${SUB_NAME[sub]}`}</span><b data-clock></b></div></header>
