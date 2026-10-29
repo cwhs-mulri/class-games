@@ -1,0 +1,24 @@
+name: Firebase 배포 (main)
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: 배포 설정 확인
+        if: env.HAS_SA != 'true'
+        run: echo "::warning::FIREBASE_SERVICE_ACCOUNT 비밀 값이 없어 배포를 건너뜁니다. README의 'Firebase 연결' 참고."
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: env.HAS_SA == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live

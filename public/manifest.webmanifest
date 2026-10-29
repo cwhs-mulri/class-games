@@ -1,0 +1,21 @@
+{
+  "name": "통합과학 수업 게임",
+  "short_name": "수업 게임",
+  "description": "통합과학2 환경과 에너지 단원 수업용 게임 모음 — 에너지 도시 경영, 100년 생존기",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0A111D",
+  "theme_color": "#0A111D",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "에너지 도시 경영", "url": "/energy-city/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "100년 생존기", "url": "/century/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
