@@ -38,11 +38,11 @@ npm test       # 엔진·밸런스·파일 참조 테스트
 
 ## 배포
 
-`main`에 푸시하면 GitHub Actions가 테스트를 돌린 뒤 Firebase Hosting에 배포합니다. Pull Request에는 7일짜리 미리보기 주소가 달립니다.
+`main`에 푸시하면 GitHub Actions가 테스트를 돌린 뒤 Firebase Hosting(https://class-games-559fd.web.app)에 배포합니다. Pull Request에는 7일짜리 미리보기 주소가 달립니다.
 
 ### Firebase 연결 (처음 한 번)
 
-1. `.firebaserc`의 `FIREBASE_PROJECT_ID`를 실제 프로젝트 ID로 바꿉니다.
+1. 프로젝트 ID `class-games-559fd`는 `.firebaserc`에 들어 있습니다.
 2. Firebase 콘솔 → 프로젝트 설정 → 서비스 계정 → **새 비공개 키 생성**으로 JSON을 받습니다.
    (또는 PC에서 `firebase init hosting:github`를 실행하면 자동으로 만들어집니다. 이때 생기는 비밀 값 이름이 `FIREBASE_SERVICE_ACCOUNT_<프로젝트ID>`이면 아래 이름으로 하나 더 등록하세요.)
 3. GitHub 저장소 → Settings → Secrets and variables → Actions → **New repository secret**
