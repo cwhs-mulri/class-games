@@ -3,7 +3,7 @@
 const FBV = '10.12.2';
 const NET = (() => {
   const subs = new Set();
-  let mode = 'init', user = null, offset = 0, api = null;
+  let mode = 'init', user = null, offset = 0, api = null, role = 'none'; // role: none | teacher | admin
   const authCbs = [];
   const fireAuth = () => authCbs.forEach(f => { try { f(user); } catch (e) { console.warn(e); } });
 
@@ -36,7 +36,7 @@ const NET = (() => {
     if (!hasCfg || forceLocal) {
       mode = 'local';
       let u; try { u = sessionStorage.getItem('cg-local-uid'); if (!u) { u = Math.random().toString(36).slice(2, 10); sessionStorage.setItem('cg-local-uid', u); } } catch (e) { u = 'x' + Math.random().toString(36).slice(2, 8); }
-      user = { uid: 'local-' + u, local: true }; fireAuth(); return;
+      user = { uid: 'local-' + u, local: true }; role = 'admin'; fireAuth(); return;
     }
     const base = `https://www.gstatic.com/firebasejs/${FBV}/`;
     const [A, U, D] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-database.js')]);
@@ -44,18 +44,23 @@ const NET = (() => {
     api = { U, D, auth, db };
     mode = 'fb';
     D.onValue(D.ref(db, '.info/serverTimeOffset'), s => { offset = s.val() || 0; });
-    await new Promise(res => { let first = true; U.onAuthStateChanged(auth, u => { user = u; fireAuth(); if (first) { first = false; res(); } }); });
-  })().catch(e => { console.warn('Firebase 연결 실패 → 로컬 모드', e); mode = 'local'; user = { uid: 'local-x', local: true }; fireAuth(); });
+    await new Promise(res => { let first = true; U.onAuthStateChanged(auth, async u => { user = u; role = await checkRole(u); fireAuth(); if (first) { first = false; res(); } }); });
+  })().catch(e => { console.warn('Firebase 연결 실패 → 로컬 모드', e); mode = 'local'; user = { uid: 'local-x', local: true }; role = 'admin'; fireAuth(); });
+
+  // 관리자: firebase-config.js의 TEACHER_EMAILS(규칙에도 같은 주소). 교사: 관리자가 teachers/에 등록한 Google 계정
+  async function checkRole(u) {
+    if (!u || u.isAnonymous || !u.email) return 'none';
+    const em = u.email.toLowerCase();
+    if ((window.TEACHER_EMAILS || []).map(s => s.toLowerCase()).includes(em)) return 'admin';
+    try { const s = await api.D.get(api.D.ref(api.db, 'teachers/' + emailKey(em))); return s.exists() ? 'teacher' : 'none'; } catch (e) { return 'none'; }
+  }
 
   return {
     get mode() { return mode; }, get user() { return user; }, ready, hasCfg,
     now: () => Date.now() + offset,
     onAuth(cb) { authCbs.push(cb); cb(user); },
-    isTeacher() {
-      if (mode === 'init') return false; if (mode === 'local') return true;
-      const em = (user && user.email || '').toLowerCase();
-      return !!(user && !user.isAnonymous && (window.TEACHER_EMAILS || []).map(s => s.toLowerCase()).includes(em));
-    },
+    isTeacher() { return mode !== 'init' && (role === 'teacher' || role === 'admin'); },
+    isAdmin() { return mode !== 'init' && role === 'admin'; },
     async ensureAnon() { await ready; if (mode !== 'fb' || user) return user; await api.U.signInAnonymously(api.auth); return api.auth.currentUser; },
     async teacherLogin() {
       await ready; if (mode !== 'fb') return user;
@@ -84,6 +89,8 @@ const NET = (() => {
     },
   };
 })();
+// Realtime Database 키에는 . 을 쓸 수 없어 , 로 바꾼다(규칙도 같은 방식)
+const emailKey = em => String(em || '').trim().toLowerCase().replace(/\./g, ',');
 const roomPath = code => `rooms/${String(code).replace(/[.#$\[\]\/]/g, '_')}`;
 function qrSVG(text) {
   const q = new QRLIB.QRCode(-1, QRLIB.ECL.M); q.addData(text); q.make();

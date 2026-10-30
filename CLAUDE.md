@@ -6,7 +6,7 @@
 - 빌드 단계 없음. `public/`이 그대로 Firebase Hosting에 올라간다.
 - 각 게임은 클래식 `<script>` 순서로 로드: `/vendor/three.min.js` → `engine.js` → 3D 모듈 → `app.js`. 모듈 간 연결은 전역 상수·함수(`const`/`function` 최상위 선언)로 한다. ES 모듈로 바꾸지 않는다.
 - `engine.js`는 DOM을 쓰지 않는 순수 규칙 파일이고 맨 끝 `module.exports`로 Node 테스트에 노출된다. 새 함수를 만들면 export 목록에도 추가한다.
-- 혼자 하기 모드 상태는 `localStorage`. 200년 생존기 수업 모드는 Firebase Realtime Database(`rooms/수업코드/...`)를 쓰고, 진행 계산은 교사 화면(live.js의 advanceStage)만 한다. 학생은 자기 uid 아래(players·votes·quiz·abil·prep)만 쓴다 — 데이터 구조를 바꾸면 `database.rules.json`도 함께 고친다.
+- 혼자 하기 모드 상태는 `localStorage`. 200년 생존기 수업 모드는 Firebase Realtime Database(`rooms/수업코드/...`)를 쓰고, 진행 계산은 교사 화면(live.js의 advanceStage)만 한다. 학생은 자기 uid 아래(players·votes·quiz·abil·prep)만 쓴다 — 데이터 구조를 바꾸면 `database.rules.json`도 함께 고친다. 교사는 관리자(`TEACHER_EMAILS`, 규칙에도 같은 주소)가 `teachers/{이메일 키}`에 등록하고(키는 소문자, `.`→`,`), 수업은 `meta/owner`(uid)인 교사만 쓴다. 규칙을 바꾸면 `tests/rules/rules.test.mjs`도 고친다(CI에서 에뮬레이터로 실행).
 - 수업 모드 시험: 주소에 `?local`을 붙이면 한 브라우저 여러 탭으로 교사·전자칠판·학생을 띄울 수 있다.
 - Three.js는 r128 고정(`public/vendor`). API를 쓸 때 r128 기준으로 확인한다.
 

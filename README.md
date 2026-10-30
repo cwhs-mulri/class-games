@@ -15,7 +15,9 @@
 - 학생: QR(`/century/#join/수업코드`) → 이름·모둠 선택 → 선택지·퀴즈 투표(모둠 다수결), 특임대 능력
 - 진행 엔진은 교사 화면에서 돈다. 수업 중에는 교사 화면 탭을 닫지 않는다.
 - 주소 끝에 `?local`을 붙이면 Firebase 없이 한 기기의 여러 탭으로 시험할 수 있다(예: `/century/?local#teacher`).
-- 교사 계정 추가: `public/shared/firebase-config.js`의 `TEACHER_EMAILS`와 `database.rules.json`의 이메일을 함께 고친다.
+- 교사 계정 추가: 관리자(kjm140@gw1.kr)가 교사 화면 '새 수업 만들기' 아래 **교사 관리** 칸에 Google 계정 이메일을 넣는다. 등록한 교사는 자기 수업만 열고 진행할 수 있다(`rooms/코드/meta/owner`).
+- 관리자 주소를 바꿀 때만 `public/shared/firebase-config.js`의 `TEACHER_EMAILS`와 `database.rules.json`의 이메일을 함께 고친다.
+- 보안 규칙 테스트(`tests/rules/`)는 Firebase 에뮬레이터가 필요해 GitHub Actions에서 돈다.
 
 ## 폴더 구조
 
@@ -26,7 +28,7 @@ public/                 Firebase Hosting으로 그대로 배포되는 폴더 (�
   sw.js                 오프라인 캐시(서비스 워커)
   shared/pwa.js         서비스 워커 등록 · 설치 버튼
   shared/net.js         실시간 연결(Firebase Realtime Database / 로컬 모드)
-  shared/firebase-config.js  Firebase 웹 설정 · 교사 이메일
+  shared/firebase-config.js  Firebase 웹 설정 · 관리자 이메일
   vendor/three.min.js   Three.js r128 (학교망에서 CDN이 막혀도 동작하도록 내장)
   energy-city/          에너지 도시 경영
     engine.js           게임 규칙(순수 함수, Node 테스트 가능)

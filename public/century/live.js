@@ -133,7 +133,21 @@ const LIVE = (function () {
     });
     renderTeacher();
   }
-  function openRoom(code) {
+  // 수업은 만든 교사만 진행할 수 있다(규칙: meta/owner). 주인 없는 예전 수업은 연 교사가 주인이 된다.
+  async function openRoom(code) {
+    if (!cur) return;
+    if (NET.mode === 'fb') {
+      let meta = null;
+      try { meta = await NET.get(roomPath(code) + '/meta'); } catch (e) {}
+      const uid = NET.user && NET.user.uid;
+      if (meta && meta.owner && meta.owner !== uid) {
+        try { if (localStorage.getItem('cg-century-teacher-code') === code) localStorage.removeItem('cg-century-teacher-code'); } catch (e) {}
+        toast(`수업 ${code}은(는) 다른 선생님(${meta.ownerEmail || '다른 계정'})의 수업이라 열 수 없어요`, 'bad');
+        if (location.hash !== '#teacher') history.replaceState(null, '', '#teacher');
+        return;
+      }
+      if (meta && !meta.owner) { try { await NET.update({ [roomPath(code) + '/meta/owner']: uid, [roomPath(code) + '/meta/ownerEmail']: (NET.user.email || '').toLowerCase() }); } catch (e) { toast('수업을 열 권한이 없어요: ' + (e.code || e.message), 'bad'); return; } }
+    }
     if (!cur) return;
     cur.unsubs.forEach(f => f()); cur.unsubs = [];
     cur.code = code; cur.opened = true; R = blank();
@@ -242,9 +256,18 @@ const LIVE = (function () {
     const code = form.code;
     const groups = {}, ord = [];
     form.groups.forEach((g, i) => { const id = 'g' + (i + 1); ord.push(id); groups[id] = g; });
-    const meta = { title: '200년 생존기', created: NET.now(), groups, order: ord, voteSec: form.voteSec, outSec: form.outSec, quizSec: form.quizSec, maxPer: form.maxPer || 0, qresSec: DEF.qresSec, prepSec: DEF.prepSec, auto: true };
-    await NET.update({ [roomPath(code) + '/meta']: meta, [roomPath(code) + '/live']: { sub: 'lobby', gen: 0, step: 1, deadline: 0, total: 1 } });
-    openRoom(code);
+    const u = NET.user || {};
+    const meta = { title: '200년 생존기', created: NET.now(), owner: u.uid, ownerEmail: (u.email || '').toLowerCase(), groups, order: ord, voteSec: form.voteSec, outSec: form.outSec, quizSec: form.quizSec, maxPer: form.maxPer || 0, qresSec: DEF.qresSec, prepSec: DEF.prepSec, auto: true };
+    if (NET.mode === 'fb') {
+      const old = await NET.get(roomPath(code) + '/meta').catch(() => null);
+      if (old && old.owner && old.owner !== u.uid) { toast(`수업 코드 ${code}은(는) 다른 선생님이 쓰고 있어요. 코드를 바꿔 주세요`, 'bad'); return; }
+    }
+    try {
+      // 주인(meta/owner)을 먼저 써야 규칙이 나머지 쓰기를 허용한다
+      await NET.put(roomPath(code) + '/meta', meta);
+      await NET.put(roomPath(code) + '/live', { sub: 'lobby', gen: 0, step: 1, deadline: 0, total: 1 });
+    } catch (e) { toast('수업을 만들지 못했어요: ' + (e.code || e.message), 'bad'); return; }
+    await openRoom(code);
     toast('수업을 만들었어요. 학생들에게 QR을 보여 주세요', 'good');
   }
   async function makeRoles() {
@@ -353,7 +376,7 @@ const LIVE = (function () {
     if (NET.mode === 'init') { root.innerHTML = `<div class="wrap">${top}<div class="card">연결 중…</div></div>`; return; }
     if (!teacher) {
       root.innerHTML = `<div class="wrap">${top}<div class="card lv-login"><h2>교사 로그인</h2><p class="muted">수업 진행·기습 이벤트·특임대 편성은 등록된 교사 Google 계정으로만 할 수 있어요.</p>
-        ${u && !u.isAnonymous ? `<p class="err">${esc(u.email)} 계정은 교사로 등록되어 있지 않아요.</p>` : ''}
+        ${u && !u.isAnonymous ? `<p class="err">${esc(u.email)} 계정은 교사로 등록되어 있지 않아요. 관리자 선생님께 이 주소를 등록해 달라고 요청한 뒤 다시 로그인하세요.</p>` : ''}
         <button class="btn hot lg" id="tIn">Google 계정으로 로그인</button></div></div>`;
       $('#tIn').onclick = () => NET.teacherLogin().then(() => schedule()).catch(e => toast('로그인 실패: ' + (e.code || e.message), 'bad'));
       const o = $('#tOut'); if (o) o.onclick = () => NET.logout();
@@ -362,6 +385,43 @@ const LIVE = (function () {
     if (!cur.code || !R.meta) { renderSetup(root, top); return; }
     renderControl(root, top);
   }
+  // ---- 교사 관리(관리자만) ----
+  // teachers/{이메일 키}: {email, name, at}. 관리자 주소는 firebase-config.js TEACHER_EMAILS와 database.rules.json에 있다.
+  function adminHTML() {
+    const list = Object.values(cur.teachers || {}).sort((a, b) => (a.at || 0) - (b.at || 0));
+    const admins = (window.TEACHER_EMAILS || []).map(e => e.toLowerCase());
+    return `<section class="card lv-admin"><h3>교사 관리 <span class="muted">관리자에게만 보여요</span></h3>
+      <p class="muted">등록한 선생님은 이 주소로 로그인해 자기 수업을 만들고 진행할 수 있어요. 다른 선생님의 수업은 열거나 조작할 수 없어요.<br>Google 로그인이 되는 주소만 쓸 수 있어요(Gmail 또는 학교 Google Workspace 계정).</p>
+      <div class="lv-row"><div><label for="adEm">이메일</label><input type="text" inputmode="email" id="adEm" placeholder="teacher@gmail.com" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+        <div><label for="adNm">이름(선택)</label><input type="text" id="adNm" maxlength="30" placeholder="예: 김OO 선생님"></div>
+        <div style="align-self:end"><button class="btn hot" id="adAdd">교사 추가</button></div></div>
+      <p class="err" id="adErr" role="alert"></p>
+      <ul class="lv-tlist">${admins.map(e => `<li><b>${esc(e)}</b><span class="chip">관리자</span></li>`).join('')}
+        ${list.map(t => `<li><b>${esc(t.email)}</b>${t.name ? `<span class="muted">${esc(t.name)}</span>` : ''}<span class="sp"></span><button class="btn" data-tdel="${esc(emailKey(t.email))}" aria-label="${esc(t.email)} 삭제">삭제</button></li>`).join('')}
+        ${list.length ? '' : `<li class="muted">${cur.teachersLoaded ? '아직 등록한 선생님이 없어요.' : '불러오는 중…'}</li>`}</ul></section>`;
+  }
+  function adminBind() {
+    if (!cur.teachersWatch) {
+      cur.teachersWatch = NET.watch('teachers', v => { cur.teachers = v || {}; cur.teachersLoaded = true; if (!cur.code) schedule(); });
+    }
+    const err = $('#adErr');
+    $('#adAdd').onclick = async () => {
+      const em = $('#adEm').value.trim().toLowerCase(), nm = $('#adNm').value.trim().slice(0, 30);
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) || em.length > 100) { err.textContent = '이메일 주소를 확인해 주세요.'; return; }
+      if ((window.TEACHER_EMAILS || []).map(e => e.toLowerCase()).includes(em)) { err.textContent = '관리자 주소는 따로 등록하지 않아도 돼요.'; return; }
+      const rec = { email: em, at: NET.now() }; if (nm) rec.name = nm;
+      try { await NET.put('teachers/' + emailKey(em), rec); $('#adEm').value = ''; $('#adNm').value = ''; err.textContent = ''; if (document.activeElement) document.activeElement.blur(); toast(em + ' 선생님을 등록했어요', 'good'); schedule(); }
+      catch (e) { err.textContent = '등록하지 못했어요: ' + (e.code || e.message); }
+    };
+    document.querySelectorAll('[data-tdel]').forEach(b => b.onclick = async () => {
+      const t = (cur.teachers || {})[b.dataset.tdel];
+      if (!confirmDel(b)) return;
+      try { await NET.put('teachers/' + b.dataset.tdel, null); toast((t ? t.email : '') + ' 등록을 지웠어요', 'good'); }
+      catch (e) { toast('지우지 못했어요: ' + (e.code || e.message), 'bad'); }
+    });
+  }
+  // 브라우저 확인 창 대신 두 번 누르기
+  function confirmDel(b) { if (b.dataset.armed) return true; b.dataset.armed = '1'; b.textContent = '한 번 더 누르면 삭제'; b.classList.add('hot'); setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = '삭제'; b.classList.remove('hot'); } }, 3000); return false; }
   function renderSetup(root, top) {
     const saved = cur.setup || { n: 6, code: String(1000 + Math.floor(Math.random() * 9000)), scen: 'mid', mix: false, voteSec: 40, outSec: 10, quizSec: 25, animals: null };
     cur.setup = saved;
@@ -382,12 +442,14 @@ const LIVE = (function () {
         <p class="muted">예상 진행 시간 약 <b>${total}분</b> (20세대 · 과학 무전 10회 · 60초 준비 포함, 모두 투표하면 더 빨라져요)</p>
         <button class="btn hot lg" id="sGo">수업 만들기</button>
       </section>
-      <section class="card"><h3>이전 수업 이어서 열기</h3><div class="lv-row"><input type="text" id="sOld" placeholder="수업 코드" style="max-width:160px"><button class="btn" id="sOpen">열기</button></div></section></div>`;
+      <section class="card"><h3>이전 수업 이어서 열기</h3><div class="lv-row"><input type="text" id="sOld" placeholder="수업 코드" style="max-width:160px"><button class="btn" id="sOpen">열기</button></div><p class="muted">내가 만든 수업만 열 수 있어요.</p></section>
+      ${NET.isAdmin() ? adminHTML() : ''}</div>`;
     const read = () => { saved.code = $('#sCode').value.trim() || saved.code; saved.n = Math.max(2, Math.min(8, +$('#sN').value || 6)); saved.voteSec = Math.max(15, +$('#sV').value || 40); saved.outSec = Math.max(5, +$('#sO').value || 10); saved.quizSec = Math.max(10, +$('#sQ').value || 25); saved.maxPer = +$('#sM').value; for (let i = 0; i < 8; i++) { const s = document.getElementById('sA' + i); if (s) animals[i] = s.value; } };
-    root.querySelectorAll('input,select').forEach(el => el.onchange = () => { read(); setTimeout(renderTeacher, 0); });
+    root.querySelectorAll('.lv-setup input,.lv-setup select').forEach(el => el.onchange = () => { read(); setTimeout(renderTeacher, 0); });
     root.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { read(); if (b.dataset.sc === 'mix') saved.mix = true; else { saved.mix = false; saved.scen = b.dataset.sc; } renderTeacher(); });
     $('#sGo').onclick = () => { read(); createRoom({ code: saved.code.replace(/[^0-9A-Za-z_-]/g, ''), maxPer: saved.maxPer ?? 5, voteSec: saved.voteSec, outSec: saved.outSec, quizSec: saved.quizSec, groups: Array.from({ length: saved.n }, (_, i) => ({ name: (i + 1) + '모둠', animal: animals[i], scen: scens[i] })) }); };
     $('#sOpen').onclick = () => { const c = $('#sOld').value.trim(); if (c) openRoom(c); };
+    if (NET.isAdmin()) adminBind();
     const o = $('#tOut'); if (o) o.onclick = () => NET.logout();
   }
   function renderControl(root, top) {

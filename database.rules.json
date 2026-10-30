@@ -2,42 +2,65 @@
   "rules": {
     ".read": false,
     ".write": false,
+    "teachers": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr')",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr')",
+      "$k": {
+        ".read": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().replace('.', ',') == $k",
+        ".validate": "newData.hasChildren(['email', 'at']) && newData.child('email').isString() && newData.child('email').val().length <= 100 && newData.child('email').val().toLowerCase().replace('.', ',') == $k && (!newData.child('name').exists() || (newData.child('name').isString() && newData.child('name').val().length <= 30))"
+      }
+    },
     "rooms": {
       "$code": {
         ".read": "auth != null",
-        "meta": { ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'" },
-        "live": { ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'" },
-        "groups": { ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'" },
+        "meta": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && (!data.child('owner').exists() || data.child('owner').val() == auth.uid) && (!newData.exists() || newData.child('owner').val() == auth.uid)",
+          "owner": {
+            ".validate": "newData.isString()"
+          }
+        },
+        "live": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid"
+        },
+        "groups": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid"
+        },
         "players": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
           "$uid": {
             ".write": "auth != null && auth.uid == $uid",
             ".validate": "newData.hasChildren(['name', 'g']) && newData.child('name').isString() && newData.child('name').val().length >= 1 && newData.child('name').val().length <= 20 && newData.child('g').isString() && newData.child('g').val().length <= 4"
           }
         },
         "votes": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
-          "$gen": { "$uid": {
-            ".write": "auth != null && auth.uid == $uid",
-            ".validate": "newData.child('c').isNumber() && newData.child('c').val() >= 0 && newData.child('c').val() <= 2 && newData.child('g').isString()"
-          } }
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('c').isNumber() && newData.child('c').val() >= 0 && newData.child('c').val() <= 2 && newData.child('g').isString()"
+            }
+          }
         },
         "quiz": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
-          "$gen": { "$uid": {
-            ".write": "auth != null && auth.uid == $uid",
-            ".validate": "newData.child('a').isNumber() && newData.child('a').val() >= 0 && newData.child('a').val() <= 3 && newData.child('g').isString()"
-          } }
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('a').isNumber() && newData.child('a').val() >= 0 && newData.child('a').val() <= 3 && newData.child('g').isString()"
+            }
+          }
         },
         "abil": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
-          "$gen": { "$uid": {
-            ".write": "auth != null && auth.uid == $uid",
-            ".validate": "newData.child('g').isString()"
-          } }
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('g').isString()"
+            }
+          }
         },
         "prep": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase() == 'kjm140@gw1.kr'",
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
           "$uid": {
             ".write": "auth != null && auth.uid == $uid",
             ".validate": "newData.child('food').isNumber() && newData.child('food').val() >= 0 && newData.child('food').val() <= 60 && newData.child('special').isNumber() && newData.child('special').val() >= 0 && newData.child('special').val() <= 5 && newData.child('damage').isNumber() && newData.child('damage').val() >= 0 && newData.child('damage').val() <= 300 && newData.child('g').isString()"
