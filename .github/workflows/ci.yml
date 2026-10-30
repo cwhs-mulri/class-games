@@ -14,7 +14,7 @@ jobs:
       - run: npm test
       - name: 보안 규칙 테스트(Firebase 에뮬레이터)
         run: |
-          npm i --no-save --no-audit --no-fund @firebase/rules-unit-testing@4 firebase@10 > "$RUNNER_TEMP/npm.log" 2>&1 || { tail -5 "$RUNNER_TEMP/npm.log" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          npm i --no-save --no-audit --no-fund @firebase/rules-unit-testing firebase > "$RUNNER_TEMP/npm.log" 2>&1 || { tail -5 "$RUNNER_TEMP/npm.log" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
           set +e
           npx --yes firebase-tools emulators:exec --only database --project demo-class-games "node --test --test-reporter=spec tests/rules/rules.test.mjs" > "$RUNNER_TEMP/rules.log" 2>&1
           code=$?

@@ -1,6 +1,6 @@
 // Realtime Database 보안 규칙 테스트 — Firebase 에뮬레이터가 필요해서 GitHub Actions에서만 돈다.
 // 로컬에서 돌리려면(Java 필요):
-//   npm i --no-save @firebase/rules-unit-testing@4 firebase@10
+//   npm i --no-save @firebase/rules-unit-testing firebase
 //   npx firebase-tools emulators:exec --only database --project demo-class-games "node --test tests/rules/"
 import test, { before, after, beforeEach } from 'node:test';
 import { readFileSync } from 'node:fs';
