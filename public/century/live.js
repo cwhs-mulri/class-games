@@ -79,6 +79,48 @@ const LIVE = (function () {
   }
   function tCol(T) { const st = [[0.3, [127, 211, 255]], [1.5, [255, 209, 102]], [2.5, [255, 138, 61]], [4, [255, 59, 48]], [5.6, [193, 18, 31]]]; if (T <= st[0][0]) return 'rgb(127,211,255)'; for (let i = 1; i < st.length; i++) { if (T <= st[i][0]) { const [a, ca] = st[i - 1], [b, cb] = st[i], k = (T - a) / (b - a); return `rgb(${ca.map((c, j) => Math.round(c + (cb[j] - c) * k)).join(',')})`; } } return 'rgb(193,18,31)'; }
   const bar = (v, col) => `<span class="lv-meter"><i style="width:${Math.max(0, Math.min(100, v))}%;background:${col}"></i></span>`;
+  // ---- 연출: 이전 값 → 새 값으로 막대·숫자가 움직인다 ----
+  const pct = v => Math.max(0, Math.min(100, Math.round(v)));
+  const barK = (v, col, k, from) => `<span class="lv-meter"><i data-k="${k}" data-v="${pct(v)}"${from != null ? ` data-from="${from}"` : ''} style="width:${pct(v)}%;background:${col}"></i></span>`;
+  function animateMeters(box) {
+    if (!cur || !box) return; cur.mprev = cur.mprev || {};
+    const go = [];
+    box.querySelectorAll('i[data-k]').forEach(el => {
+      const k = el.dataset.k, v = +el.dataset.v; let from = cur.mprev[k];
+      if (from == null && el.dataset.from != null) from = +el.dataset.from;
+      cur.mprev[k] = v;
+      if (from != null && Math.abs(from - v) > 0.5 && !RM) { el.style.transition = 'none'; el.style.width = from + '%'; go.push([el, v]); }
+    });
+    if (!go.length) return;
+    void box.offsetWidth;
+    requestAnimationFrame(() => go.forEach(([el, v]) => { el.style.transition = ''; el.style.width = v + '%'; }));
+  }
+  function animateNums(box) {
+    if (!cur || !box) return; cur.nprev = cur.nprev || {};
+    box.querySelectorAll('[data-nk]').forEach(el => {
+      const k = el.dataset.nk, v = +el.dataset.n, from = cur.nprev[k]; cur.nprev[k] = v;
+      if (from == null || from === v || RM) return;
+      const t0 = performance.now(), d = 900;
+      el.classList.add(v > from ? 'nup' : 'ndown');
+      const step = now => { const k2 = Math.min(1, (now - t0) / d), e = 1 - Math.pow(1 - k2, 3); if (!el.isConnected) return; el.textContent = Math.round(from + (v - from) * e); if (k2 < 1) requestAnimationFrame(step); else setTimeout(() => el.classList.remove('nup', 'ndown'), 600); };
+      el.textContent = from; requestAnimationFrame(step);
+    });
+  }
+  // 지금 단계가 시작된 뒤 흐른 시간(ms) — 다시 그려도 애니메이션이 이어지도록 음수 지연으로 쓴다
+  function stageElapsed() { const L = R.live || {}; if (L.paused) return 1e9; return NET.now() - ((L.deadline || 0) - (L.total || 0)); }
+  function decadeTag(gen) { return gen < 10 ? '실제 기록의 시대' : gen === 10 ? '바로 지금' : gen === 11 ? '여기부터는 미래 예측' : '미래 예측 · IPCC 시나리오'; }
+  function decadeBanner(gen, cls) {
+    const el = stageElapsed(); if (el > 3800 || el < -500) return '';
+    return `<div class="lv-decade ${cls || ''}" style="animation-delay:-${Math.max(0, Math.round(el))}ms" aria-hidden="true"><small>${gen + 1}세대</small><b>${DECADES[gen]}년대</b><span>${decadeTag(gen)}</span></div>`;
+  }
+  // 이 모둠 장면에 띄울 날씨·재난 효과: 대기 중인 기습 이벤트 + 이번 결과에 반영된 것
+  function fxFor(gid) {
+    const L = R.live || {}, out = new Set(), themeOf = p => p && (p.key || (p.custom && p.custom.theme));
+    for (const p of Object.values(L.pending || {})) if (p && (p.target === 'all' || p.target === gid)) { const k = themeOf(p); if (k) out.add(k); }
+    const run = runOf(gid), gen = Math.min(L.gen || 0, GENS - 1);
+    if (run && run.last && run.last.gen === gen && ['outcome', 'quiz', 'quizres'].includes(L.sub)) for (const n of run.last.notes || []) { const k = typeof n === 'string' ? n : n && n.theme; if (k) out.add(k); }
+    return [...out];
+  }
   const joinURL = code => location.origin + '/century/#join/' + code;
   function hintChips(animal, c, flags, luck) {
     const A = ANIMALS[animal], L = { pop: A.popName, energy: A.energyName, health: A.healthName, hab: A.habName, food: '먹이터' };
@@ -553,10 +595,13 @@ const LIVE = (function () {
       else if (sub === 'outcome' && run && run.last && run.last.gen === gen) { const ev = findEvent(run.animal, run.order[gen]); const Ls = run.last; const dp = Math.round(run.pop - Ls.before.pop); status = `<b>→ ${esc(ev.c[Ls.idx].l)}</b><span class="${dp >= 0 ? 'up' : 'down'}">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</span>${(Ls.roleNames || []).map(n => `<span class="role">★ ${esc(n)}</span>`).join('')}${(Ls.notes || []).map(k => { const N = noteInfo(k) || {}; return `<span class="down">${esc(N.icon)} ${esc(N.name)}</span>`; }).join('')}`; }
       else if ((sub === 'quiz' || sub === 'quizres') && run) { const qt = R.groups[gid] && R.groups[gid].qt; const n = ms.filter(m => R.quiz && R.quiz[gen] && R.quiz[gen][m.uid]).length; status = sub === 'quiz' ? `<span>답변 ${n}/${ms.length}</span>` : (qt && qt.gen === gen ? `<span class="${qt.ok ? 'up' : 'down'}">${qt.ok ? '정답 · 보급품 획득' : '오답'}</span>` : ''); }
       else if (sub === 'end' && run) { status = run.extinctAt == null ? `<span class="up">생존 · ${A.popName} ${run.pop}</span>` : `<span class="dead">멸종 · ${DECADES[run.extinctAt]}년대</span>`; }
-      return `<article class="lv-card ${run && run.extinctAt != null ? 'ext' : ''}" data-g="${gid}">
+      const el = stageElapsed(), justExt = run && run.extinctAt === gen && sub === 'outcome', surv = sub === 'end' && run && run.extinctAt == null;
+      let bub = '';
+      if (sub === 'outcome' && run && run.last && run.last.gen === gen && el < 4500) { const dp = Math.round(run.pop - run.last.before.pop); bub = `<div class="lv-dbub ${dp >= 0 ? 'up' : 'down'}" style="animation-delay:-${Math.max(0, Math.round(el))}ms">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</div>`; }
+      return `<article class="lv-card ${run && run.extinctAt != null ? 'ext' : ''} ${justExt ? 'just-ext' : ''} ${surv ? 'surv' : ''}" data-g="${gid}" ${justExt ? `style="--ed:-${Math.max(0, Math.round(el))}ms"` : ''}>
         <header><b>${esc(g.name)}</b><span>${A.name}</span><span class="t" style="color:${tCol(st.T)}">+${f1(st.T)}°C</span><span class="sc" style="color:${SCOL[g.scen]}">${SCENARIOS[g.scen].name}</span></header>
-        <div class="lv-view" id="v_${gid}">${run && run.extinctAt != null ? '<div class="lv-stamp">멸종</div>' : ''}</div>
-        <div class="lv-stats"><span>${A.popName}</span>${bar(st.pop, '#7FD3FF')}<span>${A.energyName}</span>${bar(st.energy, '#FFC23D')}<span>${A.healthName}</span>${bar(st.health, '#4ADE80')}<span>${A.habName}</span>${bar(st.hab, st.hab < 30 ? '#FB7185' : '#A78BFA')}</div>
+        <div class="lv-view" id="v_${gid}">${run && run.extinctAt != null ? '<div class="lv-stamp">멸종</div>' : ''}${surv ? '<div class="lv-sstamp">생존</div>' : ''}${bub}</div>
+        <div class="lv-stats"><span>${A.popName}</span>${barK(st.pop, '#7FD3FF', gid + ':p')}<span>${A.energyName}</span>${barK(st.energy, '#FFC23D', gid + ':e')}<span>${A.healthName}</span>${barK(st.health, '#4ADE80', gid + ':h')}<span>${A.habName}</span>${barK(st.hab, st.hab < 30 ? '#FB7185' : '#A78BFA', gid + ':a')}</div>
         <div class="lv-status">${status}</div>
         <div class="lv-members">${ms.map(m => `<span class="${roles[m.uid] ? 'role' : ''}">${roles[m.uid] ? '★' : ''}${esc(m.name)}</span>`).join('')}</div>
       </article>`;
@@ -564,11 +609,12 @@ const LIVE = (function () {
     let endBand = '';
     if (sub === 'end') {
       const ranked = order().map(gid => ({ gid, run: runOf(gid) })).filter(x => x.run).sort((a, b) => (gensSurvived(b.run) - gensSurvived(a.run)) || (b.run.pop - a.run.pop));
-      endBand = `<div class="lv-endband"><h2>200년의 기록 · 같은 선택을 다른 세계에서 했다면?</h2><div class="lv-endgrid">${ranked.map(({ gid, run }) => { const reps = SCEN_ORDER.map(k => [k, replay(run, k)]); return `<div><b>${esc(G(gid).name)} · ${ANIMALS[run.animal].name}</b>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${bar(r.pop, SCOL[k])}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}</div>`; }).join('')}</div><p>온난화의 속도는 동물이 아니라 인류의 배출량이 정한다.</p></div>`;
+      endBand = `<div class="lv-endband"><h2>200년의 기록 · 같은 선택을 다른 세계에서 했다면?</h2><div class="lv-endgrid">${ranked.map(({ gid, run }) => { const reps = SCEN_ORDER.map(k => [k, replay(run, k)]); return `<div><b>${esc(G(gid).name)} · ${ANIMALS[run.animal].name}</b>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${barK(r.pop, SCOL[k], 'end:' + gid + ':' + k, 0)}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}</div>`; }).join('')}</div><p>온난화의 속도는 동물이 아니라 인류의 배출량이 정한다.</p></div>`;
     }
-    ui.innerHTML = head + lobbyBand + quizBand + `<main class="lv-grid n${order().length}">${cards}</main>` + endBand;
+    ui.innerHTML = head + lobbyBand + quizBand + `<main class="lv-grid n${order().length}">${cards}</main>` + endBand + (sub === 'event' ? decadeBanner(gen, 'big') : '');
+    animateMeters(ui);
     const sb = $('#bSound'); if (sb) sb.onclick = () => { Splash.enableSound(); schedule(); };
-    Board3D.sync(order().map(gid => ({ id: gid, el: document.getElementById('v_' + gid), animal: G(gid).animal, state: groupState(gid) })));
+    Board3D.sync(order().map(gid => ({ id: gid, el: document.getElementById('v_' + gid), animal: G(gid).animal, state: Object.assign({}, groupState(gid), { fx: fxFor(gid) }) })));
     // 공지(특임대 · 기습 이벤트)
     const over = $('#bOver'), n = L.notice;
     if (noticeFresh(n) && cur.shownNotice !== n.t) {
@@ -627,7 +673,8 @@ const LIVE = (function () {
     const myRoleKey = rolesOf(gid)[uid], myRole = myRoleKey ? roleOf(g.animal, myRoleKey) : null, usedN = (usesOf(gid)[uid] || 0);
     const head = `<header class="lv-phead"><div><b>${esc(g.name)}</b> · ${A.name} <span class="muted">· ${esc(meP.name)}</span></div><div class="lv-pclock"><span>${sub === 'lobby' || sub === 'prep' ? SUB_NAME[sub] : `${DECADES[gen]}년대 · ${SUB_NAME[sub]}`}</span><b data-clock></b></div></header>
       ${myRole ? `<div class="lv-role">★ 나는 <b>${myRole.name}</b> · ${myRole.ability}: ${abilityDesc(g.animal, myRole.type)} <span class="muted">(남은 ${Math.max(0, ROLE_USES - usedN)}번)</span></div>` : ''}`;
-    const stats = run ? `<div class="lv-pstats"><span>${A.popName} <b>${Math.round(st.pop)}</b></span><span>${A.energyName} <b>${Math.round(st.energy)}</b></span><span>${A.healthName} <b>${Math.round(st.health)}</b></span><span>${A.habName} <b>${Math.round(st.hab)}</b></span><span style="color:${tCol(st.T)}">+${f1(st.T)}°C</span></div>` : '';
+    const nb = (k, v) => `<b data-nk="me:${k}" data-n="${Math.round(v)}">${Math.round(v)}</b>`;
+    const stats = run ? `<div class="lv-pstats"><span>${A.popName} ${nb('p', st.pop)}</span><span>${A.energyName} ${nb('e', st.energy)}</span><span>${A.healthName} ${nb('h', st.health)}</span><span>${A.habName} ${nb('a', st.hab)}</span><span style="color:${tCol(st.T)}">+${f1(st.T)}°C</span></div>` : '';
     let body = '';
     if (sub === 'lobby') body = `<div class="card"><h3>선생님이 시작할 때까지 기다려요</h3><p>우리 모둠: ${members(gid).map(m => esc(m.name)).join(', ')}</p><p class="muted">1920년대 ${A.place}에서 출발해 2110년대까지, 200년을 버텨야 해요. 선택지는 모둠원 다수결로 정해져요.</p></div>`;
     else if (sub === 'prep') {
@@ -677,10 +724,15 @@ const LIVE = (function () {
         <h3>같은 선택, 다른 세계</h3>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${bar(r.pop, SCOL[k])}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}
         <p class="muted">결과 코드 <b class="num">${resultCode(run)}</b></p></div>`;
     }
-    ui.innerHTML = head + `<div class="lv-pstage" id="pStage"></div>` + stats + body;
+    let fxo = '';
+    if (sub === 'event') fxo = decadeBanner(gen, 'small');
+    if (run && run.extinctAt === gen && sub === 'outcome' && stageElapsed() < 5000) fxo = `<div class="lv-extov" style="animation-delay:-${Math.max(0, Math.round(stageElapsed()))}ms" aria-hidden="true"><b>멸종</b><span>${A.name}의 기록이 ${DECADES[gen]}년대에 멈췄어요</span></div>`;
+    if (sub === 'end' && run && run.extinctAt == null) body = `<div class="lv-confetti" aria-hidden="true">${Array.from({ length: 24 }, (_, i) => `<i style="--x:${(i * 37) % 100}%;--d:${(i % 7) * 0.18}s;--c:${['#FFD166', '#7FD3FF', '#4ADE80', '#FB7185', '#A78BFA'][i % 5]}"></i>`).join('')}</div>` + body;
+    ui.innerHTML = head + `<div class="lv-pstage" id="pStage">${fxo}</div>` + stats + body;
+    animateNums(ui);
     // 3D
     const box = $('#pStage');
-    if (box && World3D.available()) { box.appendChild(World3D.element()); World3D.setBiome(g.animal); World3D.setState({ hab: st.hab, pop: run ? st.pop : 60, health: st.health, T: st.T }); World3D.setAutoRotate(true); }
+    if (box && World3D.available()) { box.appendChild(World3D.element()); World3D.setBiome(g.animal); World3D.setState({ hab: st.hab, pop: run ? st.pop : 60, health: st.health, T: st.T, fx: fxFor(gid) }); World3D.setAutoRotate(true); }
     // 동작
     ui.querySelectorAll('[data-v]').forEach(b => b.onclick = () => NET.put(`${roomPath(cur.code)}/votes/${gen}/${uid}`, { g: gid, c: +b.dataset.v, t: NET.now() }));
     ui.querySelectorAll('[data-q]').forEach(b => b.onclick = () => NET.put(`${roomPath(cur.code)}/quiz/${gen}/${uid}`, { g: gid, a: +b.dataset.q, t: NET.now() }));

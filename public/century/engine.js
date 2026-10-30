@@ -587,7 +587,7 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
     const S = surpriseDef(k); if (!S) continue;
     addE(st, S.effFor(animal), shield);
     if (S.permT) st.tAdd = Math.round((st.tAdd + S.permT) * 100) / 100;
-    notes.push(typeof k === 'string' ? k : { icon: S.icon, name: S.name });
+    notes.push(typeof k === 'string' ? k : { icon: S.icon, name: S.name, theme: S.theme });
   }
   const { T, ppm } = genClimate(scenKey, gen, st, surprises);
   const A = ANIMALS[animal];

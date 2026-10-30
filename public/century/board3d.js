@@ -19,9 +19,9 @@ const Board3D = (function () {
   }
   function makeView(el, animal) {
     const scene = new T.Scene(); scene.fog = new T.Fog(0xC9E0EE, 90, 200);
-    scene.add(new T.HemisphereLight(0xFFFFFF, 0x445566, 0.65));
+    const hemi = new T.HemisphereLight(0xFFFFFF, 0x445566, 0.62); scene.add(hemi);
     const sun = new T.DirectionalLight(0xFFF2DD, 0.9); sun.position.set(25, 45, 20); scene.add(sun);
-    const hab = World3D.makeHabitat(scene, sun); hab.build(animal);
+    const hab = World3D.makeHabitat(scene, sun, hemi); hab.build(animal);
     const cam = new T.PerspectiveCamera(42, 1.4, 0.5, 400);
     return { el, scene, hab, cam, theta: Math.random() * 6, animal };
   }
@@ -41,7 +41,9 @@ const Board3D = (function () {
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (!renderer || !canvas.isConnected || document.hidden) { last = now; return; }
-    const dt = Math.min(0.05, ((now - last) / 1000) || 0.016); last = now; clock += dt;
+    // 전자칠판 PC가 느려도 버티도록 초당 30장까지만 그린다
+    if (now - last < 31) return;
+    const dt = Math.min(0.08, ((now - last) / 1000) || 0.033); last = now; clock += dt;
     const cr = canvas.getBoundingClientRect();
     const w = Math.round(cr.width), h = Math.round(cr.height);
     if (!w || !h) return;
