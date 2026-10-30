@@ -16,8 +16,15 @@ jobs:
       - run: npm test
       - name: 보안 규칙 테스트(Firebase 에뮬레이터)
         run: |
-          npm i --no-save --no-audit --no-fund @firebase/rules-unit-testing@4 firebase@10
-          npx --yes firebase-tools emulators:exec --only database --project demo-class-games "node --test tests/rules/rules.test.mjs"
+          npm i --no-save --no-audit --no-fund @firebase/rules-unit-testing@4 firebase@10 > "$RUNNER_TEMP/npm.log" 2>&1 || { tail -5 "$RUNNER_TEMP/npm.log" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          set +e
+          npx --yes firebase-tools emulators:exec --only database --project demo-class-games "node --test --test-reporter=spec tests/rules/rules.test.mjs" > "$RUNNER_TEMP/rules.log" 2>&1
+          code=$?
+          cat "$RUNNER_TEMP/rules.log"
+          if [ $code -ne 0 ]; then
+            grep -nE "✖|not ok|Error|error|FAIL|expected|Expected" "$RUNNER_TEMP/rules.log" | head -20 | while IFS= read -r l; do echo "::error::$l"; done
+          fi
+          exit $code
       - name: 배포 설정 확인
         if: env.HAS_SA != 'true'
         run: echo "::warning::FIREBASE_SERVICE_ACCOUNT 비밀 값이 없어 배포를 건너뜁니다. README의 'Firebase 연결' 참고."
