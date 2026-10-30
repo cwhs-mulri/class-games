@@ -12,6 +12,10 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
       - name: 보안 규칙 테스트(Firebase 에뮬레이터)
         run: |
           npm i --no-save --no-audit --no-fund @firebase/rules-unit-testing firebase > "$RUNNER_TEMP/npm.log" 2>&1 || { tail -5 "$RUNNER_TEMP/npm.log" | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
