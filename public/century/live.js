@@ -8,12 +8,13 @@ const LIVE = (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const f1 = n => (Math.round(n * 10) / 10).toFixed(1);
   const SCOL = { low: '#7FD3FF', mid: '#FFB547', high: '#FF4D4D' };
-  const DEF = { voteSec: 40, outSec: 10, quizSec: 25, qresSec: 7, prepSec: 90, auto: true };
-  const SUB_NAME = { lobby: '접속 대기', prep: '60초 준비', event: '선택 투표', outcome: '결과', quiz: '과학 무전', quizres: '무전 결과', end: '기록 끝' };
+  const DEF = { voteSec: 35, outSec: 10, quizSec: 25, qresSec: 7, prepSec: 90, rescueSec: 25, rresSec: 6, summitSec: 30, sresSec: 9, midSec: 45, auto: true };
+  const SUB_NAME = { lobby: '접속 대기', prep: '60초 준비', event: '선택 투표', outcome: '결과', quiz: '과학 무전', quizres: '무전 결과', rescue: '긴급 구조 미션', rescueres: '구조 결과', summit: '기후 정상 회의', summitres: '회의 결과', prep2: '30초 미니게임', end: '기록 끝' };
+  const SOS_POP = 25; // 개체 수가 이보다 적으면 구조 요청(다른 모둠이 지원할 수 있다)
   const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   let cur = null;
   let R = blank();
-  function blank() { return { meta: null, live: null, groups: {}, players: {}, votes: {}, quiz: {}, abil: {}, prep: {} }; }
+  function blank() { return { meta: null, live: null, groups: {}, players: {}, votes: {}, quiz: {}, abil: {}, prep: {}, pred: {}, aid: {}, rescue: {}, summit: {}, prep2: {}, scores: {} }; }
 
   // ---------- 공통 ----------
   function claims() { return /^#(teacher|board|join)/.test(location.hash); }
@@ -43,6 +44,7 @@ const LIVE = (function () {
     const base = roomPath(code);
     const w = (k, path) => cur.unsubs.push(NET.watch(base + '/' + path, v => { R[k] = v == null ? (k === 'meta' || k === 'live' ? null : {}) : v; schedule(); }));
     w('meta', 'meta'); w('live', 'live'); w('groups', 'groups'); w('players', 'players'); w('prep', 'prep'); w('votes', 'votes'); w('quiz', 'quiz'); w('abil', 'abil');
+    w('pred', 'pred'); w('aid', 'aid'); w('rescue', 'rescue'); w('summit', 'summit'); w('prep2', 'prep2'); w('scores', 'scores');
   }
   function schedule() { if (!cur || cur.pending) return; cur.pending = true; setTimeout(() => { if (!cur) return; cur.pending = false; render(); }, 30); }
   function render() {
@@ -112,6 +114,31 @@ const LIVE = (function () {
   function decadeBanner(gen, cls) {
     const el = stageElapsed(); if (el > 3800 || el < -500) return '';
     return `<div class="lv-decade ${cls || ''}" style="animation-delay:-${Math.max(0, Math.round(el))}ms" aria-hidden="true"><small>${gen + 1}세대</small><b>${DECADES[gen]}년대</b><span>${decadeTag(gen)}</span></div>`;
+  }
+  const scoreOf = uid => { const o = (R.scores && R.scores[uid]) || {}; return { pred: o.pred || 0, quiz: o.quiz || 0, aid: o.aid || 0, abil: o.abil || 0, rs: o.rs || 0, total: (o.pred || 0) + (o.quiz || 0) + (o.aid || 0) + (o.abil || 0) + (o.rs || 0) }; };
+  const gname = gid => (G(gid) ? G(gid).name : '');
+  const sosGroups = () => order().filter(g => isSos(runOf(g)));
+  function qOpts(Q, mine, reveal, attr) {
+    return `<div class="lv-qopts">${Q.a.map((a, i) => { let c = ''; if (reveal) { if (i === Q.c) c = 'right'; else if (mine && mine.a === i) c = 'wrong'; } else if (mine && mine.a === i) c = 'on'; return `<button class="lv-qopt ${c}" ${attr}="${i}" ${reveal ? 'disabled' : ''}><span>${'ABCD'[i]}</span>${a}</button>`; }).join('')}</div>`;
+  }
+  // 같은 동물·같은 세계의 보통 모둠 점수와 비교한 순위
+  function fairRank() {
+    return order().map(gid => ({ gid, run: runOf(gid) })).filter(x => x.run).map(x => { const sv = gensSurvived(x.run); return Object.assign(x, { sv, diff: runScore(sv, x.run.pop) - baselineScore(x.run.animal, x.run.scen) }); })
+      .sort((a, b) => (b.diff - a.diff) || (b.sv - a.sv) || (b.run.pop - a.run.pop));
+  }
+  function awards() {
+    const out = [], ps = Object.entries(R.players || {});
+    const best = (title, icon, f, unit) => { let mx = 0, who = []; for (const [uid, p] of ps) { const v = f(scoreOf(uid)); if (v > mx) { mx = v; who = [p.name]; } else if (v === mx && v > 0) who.push(p.name); } if (mx > 0) out.push({ title, icon, who: who.slice(0, 3).map(esc).join(' · ') + ` (${mx}${unit})` }); };
+    best('예측왕', '🎯', s => s.pred, '번 적중');
+    best('과학 무전왕', '📡', s => s.quiz + s.rs, '문제');
+    best('특임대 활약', '★', s => s.abil, '번');
+    best('나눔왕', '🤝', s => s.aid, '번 지원');
+    let gm = 0, gw = [];
+    for (const gid of order()) { const n = (R.groups[gid] && R.groups[gid].aidSent) || 0; if (n > gm) { gm = n; gw = [gid]; } else if (n === gm && n > 0) gw.push(gid); }
+    if (gm > 0) out.push({ title: '가장 많이 도운 모둠', icon: '🫶', who: gw.map(g => esc(gname(g))).join(' · ') + ` (${gm}번)` });
+    const pw = {}; for (const x of Object.values((R.live && R.live.summits) || {})) for (const [gid, pl] of Object.entries(x.pl || {})) pw[gid] = (pw[gid] || 0) + PLEDGES[pl].w;
+    const pm = Math.max(0, ...Object.values(pw)); if (pm > 0) out.push({ title: '감축 앞장 모둠', icon: '🌍', who: Object.keys(pw).filter(g => pw[g] === pm).map(g => esc(gname(g))).join(' · ') + ` (기여 ${pm})` });
+    return out;
   }
   // 이 모둠 장면에 띄울 날씨·재난 효과: 대기 중인 기습 이벤트 + 이번 결과에 반영된 것
   function fxFor(gid) {
@@ -207,13 +234,37 @@ const LIVE = (function () {
     return liveUpdate(Object.assign(ch, extra || {}));
   }
   function aliveGroups() { return order().filter(g => { const r = runOf(g); return r && r.extinctAt == null; }); }
+  function rescueGroups() { return order().filter(g => { const r = runOf(g); return r && r.extinctAt == null && r.rescue != null; }); }
+  // 단계별로 학생이 낸 것이 들어 있는 곳
+  function boxOf(sub, gen) {
+    if (sub === 'quiz' || sub === 'quizres') return R.quiz && R.quiz[gen];
+    if (sub === 'prep') return R.prep;
+    if (sub === 'prep2') return R.prep2;
+    if (sub === 'rescue' || sub === 'rescueres') return R.rescue && R.rescue[gen];
+    if (sub === 'summit' || sub === 'summitres') return R.summit && R.summit[gen];
+    return R.votes && R.votes[gen];
+  }
+  const secOf = (s, M) => ({ quiz: M.quizSec || DEF.quizSec, rescue: DEF.rescueSec, summit: DEF.summitSec, prep2: DEF.midSec }[s] || 10);
+  const isSos = run => !!(run && run.extinctAt == null && run.pop > 0 && run.pop < SOS_POP);
+  // 결과 뒤 순서: 긴급 구조 → 과학 무전 → 기후 정상 회의 → 30초 미니게임 → 다음 세대
+  function goNext(from) {
+    const L = R.live, M = R.meta, gen = L.gen || 0, alive = aliveGroups().length > 0;
+    const ORDER = ['outcome', 'rescue', 'rescueres', 'quiz', 'quizres', 'summit', 'summitres', 'prep2'];
+    const ok = { rescue: rescueGroups().length > 0, quiz: QUIZ_GENS.includes(gen) && alive, summit: SUMMIT_GENS.includes(gen) && alive, prep2: gen === MID_GEN && alive };
+    for (let i = ORDER.indexOf(from) + 1; i < ORDER.length; i++) if (ok[ORDER[i]]) return setStage(ORDER[i], secOf(ORDER[i], M));
+    return nextGen();
+  }
   function everyoneDone() {
     const L = R.live; if (!L) return false;
     const gen = L.gen || 0;
     if (L.sub === 'prep') { const ps = Object.keys(R.players || {}); return ps.length > 0 && ps.every(u => R.prep && R.prep[u]); }
-    if (L.sub === 'event' || L.sub === 'quiz') {
-      const box = L.sub === 'event' ? (R.votes && R.votes[gen]) : (R.quiz && R.quiz[gen]);
+    if (['event', 'quiz', 'summit', 'prep2'].includes(L.sub)) {
+      const box = boxOf(L.sub, gen);
       const ms = aliveGroups().flatMap(g => members(g));
+      return ms.length > 0 && ms.every(m => box && box[m.uid]);
+    }
+    if (L.sub === 'rescue') {
+      const box = boxOf('rescue', gen), ms = rescueGroups().flatMap(g => members(g));
       return ms.length > 0 && ms.every(m => box && box[m.uid]);
     }
     return false;
@@ -240,8 +291,12 @@ const LIVE = (function () {
       await NET.update(ch);
       return setStage('event', M.voteSec || DEF.voteSec, { gen: 0 });
     }
+    // 개인 점수: scores/{uid} = { pred, quiz, aid, abil, rs }
+    const sc = JSON.parse(JSON.stringify(R.scores || {}));
+    const addScore = (uid, k) => { const o = sc[uid] || (sc[uid] = {}); o[k] = (o[k] || 0) + 1; };
     if (L.sub === 'event') {
-      const pend = Object.values(L.pending || {});
+      const pend = Object.values(L.pending || {}), runs = {}, sos = {};
+      for (const gid of order()) sos[gid] = isSos(runOf(gid));
       for (const gid of order()) {
         const run = runOf(gid); if (!run || run.extinctAt != null) continue;
         run.gen = gen; run.sub = 'event';
@@ -251,37 +306,102 @@ const LIVE = (function () {
         const roles = rolesOf(gid), uses = Object.assign({}, usesOf(gid)), types = [], names = [];
         for (const uid in roles) {
           const a = R.abil && R.abil[gen] && R.abil[gen][uid];
-          if (a && (uses[uid] || 0) < ROLE_USES) { const ro = roleOf(run.animal, roles[uid]); if (ro && !types.includes(ro.type)) { types.push(ro.type); names.push(ro.name + '·' + ro.ability); uses[uid] = (uses[uid] || 0) + 1; } }
+          if (a && (uses[uid] || 0) < ROLE_USES) { const ro = roleOf(run.animal, roles[uid]); if (ro && !types.includes(ro.type)) { types.push(ro.type); names.push(ro.name + '·' + ro.ability); uses[uid] = (uses[uid] || 0) + 1; addScore(uid, 'abil'); } }
         }
         const sur = pend.filter(p => p.target === 'all' || p.target === gid).map(specOf).filter(Boolean);
-        resolveRun(run, t.winner, { roles: types, surprises: sur, roleNames: names });
-        ch[`${base()}/groups/${gid}/run`] = run;
+        resolveRun(run, t.winner, { roles: types, surprises: sur, roleNames: names, rescue: true });
+        runs[gid] = run;
         ch[`${base()}/groups/${gid}/uses`] = uses;
         ch[`${base()}/groups/${gid}/tally`] = { gen, counts: t.counts, winner: t.winner, tie: t.tie, total: t.total };
+        // 결과 예측 채점
+        const dp = run.pop - run.last.before.pop;
+        members(gid).forEach(m => { const pr = R.pred && R.pred[gen] && R.pred[gen][m.uid]; if (pr && ((dp > 0 && pr.pr === 1) || (dp <= 0 && pr.pr === -1))) addScore(m.uid, 'pred'); });
       }
+      // 지원: 구조 요청 중인 모둠에 먹이 보내기
+      const aidIn = {}, aidOut = {};
+      for (const [uid, a] of Object.entries((R.aid && R.aid[gen]) || {})) {
+        const from = R.players && R.players[uid] && R.players[uid].g, to = a && a.to;
+        if (!from || !to || from === to || !runs[from] || !runs[to] || !sos[to] || runs[from].rescue != null) continue;
+        if (((sc[uid] && sc[uid].aid) || 0) >= AID.perStudent) continue;
+        applyAid(runs[from], -AID.cost, 0); applyAid(runs[to], AID.gain, AID.health); addScore(uid, 'aid');
+        (aidIn[to] = aidIn[to] || []).push(from); aidOut[from] = (aidOut[from] || 0) + 1;
+      }
+      for (const gid in runs) {
+        ch[`${base()}/groups/${gid}/run`] = runs[gid];
+        ch[`${base()}/groups/${gid}/aidIn`] = aidIn[gid] ? { gen, from: aidIn[gid] } : null;
+        if (aidOut[gid]) ch[`${base()}/groups/${gid}/aidSent`] = ((R.groups[gid] && R.groups[gid].aidSent) || 0) + aidOut[gid];
+      }
+      ch[`${base()}/scores`] = sc;
       ch[`${base()}/live/pending`] = null;
       await NET.update(ch);
       return setStage('outcome', M.outSec || DEF.outSec);
     }
-    if (L.sub === 'outcome') {
-      if (QUIZ_GENS.includes(gen) && aliveGroups().length) return setStage('quiz', M.quizSec || DEF.quizSec);
-      return nextGen();
+    if (L.sub === 'outcome') return goNext('outcome');
+    if (L.sub === 'rescue') {
+      for (const gid of rescueGroups()) {
+        const run = runOf(gid); run.gen = gen;
+        const Q = rescueQuizFor(run), ms = members(gid);
+        let right = 0; ms.forEach(m => { const v = R.rescue && R.rescue[gen] && R.rescue[gen][m.uid]; if (v && v.a === Q.c) { right++; addScore(m.uid, 'rs'); } });
+        const need = Math.max(1, Math.ceil(ms.length * 2 / 3)), ok = ms.length > 0 && right >= need;
+        applyRescue(run, ok);
+        ch[`${base()}/groups/${gid}/run`] = run;
+        ch[`${base()}/groups/${gid}/rsr`] = { gen, ok, right, need, n: ms.length };
+      }
+      ch[`${base()}/scores`] = sc;
+      await NET.update(ch);
+      return setStage('rescueres', DEF.rresSec);
     }
+    if (L.sub === 'rescueres') return goNext('rescueres');
     if (L.sub === 'quiz') {
       for (const gid of aliveGroups()) {
         const run = runOf(gid); run.gen = gen;
         const Q = quizFor(run);
-        const ans = {}; members(gid).forEach(m => { const v = R.quiz && R.quiz[gen] && R.quiz[gen][m.uid]; if (v) ans[m.uid] = { c: v.a }; });
+        const ans = {}; let right = 0, active = 0;
+        members(gid).forEach(m => {
+          const v = R.quiz && R.quiz[gen] && R.quiz[gen][m.uid], voted = R.votes && R.votes[gen] && R.votes[gen][m.uid];
+          if (v) ans[m.uid] = { c: v.a };
+          if (v || voted) active++;
+          if (v && v.a === Q.c) { right++; addScore(m.uid, 'quiz'); }
+        });
         const t = tally(ans, 4, 'q|' + code + '|' + gid + '|' + gen);
-        const ok = t.total > 0 && t.winner === Q.c;
-        applyQuiz(run, ok);
+        // 보급품은 모둠원 정답 비율만큼
+        const f = active ? right / active : 0;
+        applyQuiz(run, f);
         ch[`${base()}/groups/${gid}/run`] = run;
-        ch[`${base()}/groups/${gid}/qt`] = { gen, counts: t.counts, winner: t.total ? t.winner : -1, ok };
+        ch[`${base()}/groups/${gid}/qt`] = { gen, counts: t.counts, winner: t.total ? t.winner : -1, ok: f >= 0.5, f, right, n: active };
       }
+      ch[`${base()}/scores`] = sc;
       await NET.update(ch);
       return setStage('quizres', M.qresSec || DEF.qresSec);
     }
-    if (L.sub === 'quizres') return nextGen();
+    if (L.sub === 'quizres') return goNext('quizres');
+    if (L.sub === 'summit') {
+      const ag = aliveGroups(), pl = {};
+      for (const gid of ag) {
+        const v = {}; members(gid).forEach(m => { const x = R.summit && R.summit[gen] && R.summit[gen][m.uid]; if (x) v[m.uid] = { c: x.p }; });
+        const t = tally(v, 3, 's|' + code + '|' + gid + '|' + gen);
+        pl[gid] = t.total ? t.winner : 0;
+      }
+      const avg = ag.length ? ag.reduce((a, g) => a + PLEDGES[pl[g]].w, 0) / ag.length : 0, dT = summitDT(avg);
+      for (const gid of ag) { const run = runOf(gid); run.gen = gen; applySummit(run, pl[gid], dT); ch[`${base()}/groups/${gid}/run`] = run; }
+      const prev = (L.summits || {});
+      ch[`${base()}/live/summits`] = Object.assign({}, prev, { [gen]: { avg: Math.round(avg * 100) / 100, dT, pl } });
+      await NET.update(ch);
+      return setStage('summitres', DEF.sresSec);
+    }
+    if (L.sub === 'summitres') return goNext('summitres');
+    if (L.sub === 'prep2') {
+      for (const gid of aliveGroups()) {
+        const run = runOf(gid); run.gen = gen;
+        const list = members(gid).map(m => R.prep2 && R.prep2[m.uid]).filter(Boolean);
+        if (!list.length) continue;
+        const gain = applyMidGame(run, mergePrep(list));
+        ch[`${base()}/groups/${gid}/run`] = run;
+        ch[`${base()}/groups/${gid}/mg`] = { gen, gain, n: list.length };
+      }
+      if (Object.keys(ch).length) await NET.update(ch);
+      return nextGen();
+    }
   }
   async function nextGen() {
     const L = R.live, M = R.meta, gen = L.gen || 0;
@@ -308,6 +428,8 @@ const LIVE = (function () {
       // 주인(meta/owner)을 먼저 써야 규칙이 나머지 쓰기를 허용한다
       await NET.put(roomPath(code) + '/meta', meta);
       await NET.put(roomPath(code) + '/live', { sub: 'lobby', gen: 0, step: 1, deadline: 0, total: 1 });
+      const clear = {}; ['groups', 'votes', 'quiz', 'abil', 'prep', 'pred', 'aid', 'rescue', 'summit', 'prep2', 'scores'].forEach(k => clear[roomPath(code) + '/' + k] = null);
+      await NET.update(clear);
     } catch (e) { toast('수업을 만들지 못했어요: ' + (e.code || e.message), 'bad'); return; }
     await openRoom(code);
     toast('수업을 만들었어요. 학생들에게 QR을 보여 주세요', 'good');
@@ -465,12 +587,12 @@ const LIVE = (function () {
   // 브라우저 확인 창 대신 두 번 누르기
   function confirmDel(b) { if (b.dataset.armed) return true; b.dataset.armed = '1'; b.textContent = '한 번 더 누르면 삭제'; b.classList.add('hot'); setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = '삭제'; b.classList.remove('hot'); } }, 3000); return false; }
   function renderSetup(root, top) {
-    const saved = cur.setup || { n: 6, code: String(1000 + Math.floor(Math.random() * 9000)), scen: 'mid', mix: false, voteSec: 40, outSec: 10, quizSec: 25, animals: null };
+    const saved = cur.setup || { n: 6, code: String(1000 + Math.floor(Math.random() * 9000)), scen: 'mid', mix: false, voteSec: 35, outSec: 10, quizSec: 25, animals: null };
     cur.setup = saved;
     const animals = saved.animals || Array.from({ length: 8 }, (_, i) => ANIMAL_ORDER[i % 4]);
     saved.animals = animals;
     const scens = Array.from({ length: 8 }, (_, i) => saved.mix ? SCEN_ORDER[i % 3] : saved.scen);
-    const total = Math.round((GENS * ((+saved.voteSec) + (+saved.outSec)) + QUIZ_GENS.length * ((+saved.quizSec) + DEF.qresSec) + DEF.prepSec) / 60);
+    const total = Math.round((GENS * ((+saved.voteSec) + (+saved.outSec)) + QUIZ_GENS.length * ((+saved.quizSec) + DEF.qresSec) + DEF.prepSec + SUMMIT_GENS.length * (DEF.summitSec + DEF.sresSec) + DEF.midSec) / 60);
     root.innerHTML = `<div class="wrap">${top}
       <section class="card lv-setup"><h2>새 수업 만들기</h2>
         <div class="lv-row"><div><label for="sCode">수업 코드</label><input type="text" id="sCode" value="${esc(saved.code)}" maxlength="8"></div>
@@ -481,7 +603,7 @@ const LIVE = (function () {
           <div><label for="sM">모둠 최대 인원</label><select id="sM">${[0, 3, 4, 5, 6].map(n => `<option value="${n}" ${(saved.maxPer ?? 5) === n ? 'selected' : ''}>${n ? n + '명' : '제한 없음'}</option>`).join('')}</select></div></div>
         <div class="lv-row"><div><label>배출 시나리오</label><div class="lv-seg">${SCEN_ORDER.map(k => `<button data-sc="${k}" aria-pressed="${!saved.mix && saved.scen === k}" style="--sc:${SCOL[k]}">${SCENARIOS[k].name}</button>`).join('')}<button data-sc="mix" aria-pressed="${saved.mix}">모둠마다 다르게</button></div></div></div>
         <div class="lv-groups">${Array.from({ length: saved.n }, (_, i) => `<div class="lv-g"><b>${i + 1}모둠</b><select id="sA${i}" aria-label="${i + 1}모둠 동물">${ANIMAL_ORDER.map(a => `<option value="${a}" ${animals[i] === a ? 'selected' : ''}>${ANIMALS[a].name}</option>`).join('')}</select><span class="chip" style="color:${SCOL[scens[i]]}">${SCENARIOS[scens[i]].name}</span></div>`).join('')}</div>
-        <p class="muted">예상 진행 시간 약 <b>${total}분</b> (20세대 · 과학 무전 10회 · 60초 준비 포함, 모두 투표하면 더 빨라져요)</p>
+        <p class="muted">예상 진행 시간 약 <b>${total}분</b> (20세대 · 과학 무전 10회 · 기후 정상 회의 3회 · 60초 준비 · 30초 미니게임 포함, 긴급 구조가 생기면 30초씩 늘고 모두 투표하면 빨라져요)</p>
         <button class="btn hot lg" id="sGo">수업 만들기</button>
       </section>
       <section class="card"><h3>이전 수업 이어서 열기</h3><div class="lv-row"><input type="text" id="sOld" placeholder="수업 코드" style="max-width:160px"><button class="btn" id="sOpen">열기</button></div><p class="muted">내가 만든 수업만 열 수 있어요.</p></section>
@@ -500,15 +622,15 @@ const LIVE = (function () {
     const nPlayers = Object.keys(R.players || {}).length;
     const rows = order().map(gid => {
       const g = G(gid), st = groupState(gid), ms = members(gid), roles = rolesOf(gid), run = st.run;
-      const box = sub === 'quiz' ? (R.quiz && R.quiz[gen]) : sub === 'prep' ? R.prep : (R.votes && R.votes[gen]);
+      const box = boxOf(sub, gen), SUBMIT = ['event', 'quiz', 'prep', 'summit', 'rescue', 'prep2'];
       const done = ms.filter(m => box && box[m.uid]).length;
       return `<tr><td><b>${esc(g.name)}</b><br><small style="color:${SCOL[g.scen]}">${ANIMALS[g.animal].name} · ${SCENARIOS[g.scen].name}</small></td>
-        <td><div class="lv-mems">${ms.map(m => { const voted = box && box[m.uid]; return `<span class="lv-mem ${['event', 'quiz', 'prep'].includes(sub) ? (voted ? 'done' : 'wait') : ''}"><b>${esc(m.name)}</b>${roles[m.uid] ? `<small>★${esc((roleOf(g.animal, roles[m.uid]) || {}).name || '')}</small>` : ''}
+        <td><div class="lv-mems">${ms.map(m => { const voted = box && box[m.uid]; return `<span class="lv-mem ${SUBMIT.includes(sub) ? (voted ? 'done' : 'wait') : ''}"><b>${esc(m.name)}</b>${roles[m.uid] ? `<small>★${esc((roleOf(g.animal, roles[m.uid]) || {}).name || '')}</small>` : ''}
           <select data-move="${m.uid}" aria-label="${esc(m.name)} 모둠 옮기기">${order().map(o => `<option value="${o}" ${o === gid ? 'selected' : ''}>${esc(G(o).name)}</option>`).join('')}</select>
           ${cur.kickArm === m.uid ? `<button class="lv-kick sure" data-kick="${m.uid}">내보내기 확인</button><button class="lv-kick" data-kickx="1">취소</button>` : `<button class="lv-kick" data-kickarm="${m.uid}" aria-label="${esc(m.name)} 내보내기">✕</button>`}</span>`; }).join('') || '<span class="muted">아직 없음</span>'}</div>
           ${M.maxPer && ms.length > M.maxPer ? `<small class="err">최대 ${M.maxPer}명 초과</small>` : ''}</td>
         <td class="num">${run ? (st.alive ? Math.round(st.pop) : '멸종') : '–'}</td><td class="num">${run ? Math.round(st.energy) : '–'}</td><td class="num">${run ? Math.round(st.health) : '–'}</td><td class="num">${run ? Math.round(st.hab) : '–'}</td>
-        <td class="num">${['event', 'quiz', 'prep'].includes(sub) ? `${done}/${ms.length}` : ''}</td></tr>`;
+        <td class="num">${SUBMIT.includes(sub) ? `${done}/${ms.length}` : ''}</td><td class="num">${(() => { const t = ms.reduce((a, m) => a + scoreOf(m.uid).total, 0); return t || ''; })()}</td></tr>`;
     }).join('');
     const tgOpts = `<option value="all">모든 모둠</option>` + order().map(g => `<option value="${g}">${esc(G(g).name)}</option>`).join('');
     root.innerHTML = `<div class="wrap lv-teacher">${top}
@@ -534,7 +656,7 @@ const LIVE = (function () {
         <div class="lv-btns"><label class="lv-auto" for="cMax">모둠 최대 인원</label><select id="cMax">${[0, 3, 4, 5, 6].map(n => `<option value="${n}" ${(M.maxPer || 0) === n ? 'selected' : ''}>${n ? n + '명' : '제한 없음'}</option>`).join('')}</select>
         <button class="btn" id="cBalance">인원 고르게 나누기</button></div></div>
         <p class="muted" style="font-size:13px">학생 옆 목록에서 모둠을 바꾸면 그 학생 휴대폰도 바로 새 모둠 화면으로 바뀝니다. ✕는 중복 접속이나 잘못 들어온 학생을 내보낼 때 쓰세요(그 휴대폰은 다시 참여 화면으로 돌아가요). 옮긴 학생의 특임대 역할은 사라져요.</p>
-        <div class="scroll"><table class="lv-table"><thead><tr><th>모둠</th><th>모둠원 (★특임대)</th><th>개체군</th><th>에너지</th><th>건강</th><th>서식지</th><th>제출</th></tr></thead><tbody>${rows}</tbody></table></div></section>
+        <div class="scroll"><table class="lv-table"><thead><tr><th>모둠</th><th>모둠원 (★특임대)</th><th>개체군</th><th>에너지</th><th>건강</th><th>서식지</th><th>제출</th><th>개인 점수 합</th></tr></thead><tbody>${rows}</tbody></table></div></section>
       <section class="card"><div class="lv-row"><button class="btn" id="cNew">새 수업 만들기</button>${sub === 'end' ? '' : ''}</div></section>
     </div>`;
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
@@ -581,9 +703,26 @@ const LIVE = (function () {
       <div class="lv-btitle"><h1>200년 생존기</h1><span>${['lobby', 'prep'].includes(sub) ? '1920년대에서 출발' : `${gen + 1}세대 / ${GENS} · <b>${DECADES[gen]}년대</b>`}</span></div>
       <div class="lv-bphase"><span>${SUB_NAME[sub] || ''}</span><b data-clock></b><span class="lv-tbar"><i data-bar></i></span></div>
       <button class="lv-sound" id="bSound">${Splash.soundOn ? '🔊 경보음 켜짐' : '🔈 경보음 켜기'}</button>
+      <button class="lv-full" id="bFull">${document.fullscreenElement ? '전체화면 끄기' : '⛶ 전체화면'}</button>
       <div class="lv-bjoin"><img src="${qr}" alt="" width="64" height="64"><div><small>수업 코드</small><b>${esc(cur.code)}</b></div></div></header>
       ${Object.keys(L.pending || {}).length ? `<div class="lv-pend">${Object.values(L.pending).map(p => { const D = surpriseDef(specOf(p)); return `<span class="${(p.key === 'deal' || (p.custom && p.custom.theme === 'deal')) ? 'good' : ''}">${esc(D.icon)} ${esc(D.name)} → ${esc(targetName(p.target))} · 이번 세대 결과에 반영</span>`; }).join('')}</div>` : ''}`;
     const quizBand = Q ? `<div class="lv-qband"><div class="eyebrow">📡 과학 무전 · 모둠 다수결로 정답이면 보급품</div><h2>${Q.q}</h2><ol>${Q.a.map((a, i) => `<li class="${sub === 'quizres' && i === Q.c ? 'right' : ''}">${a}</li>`).join('')}</ol></div>` : '';
+    let stageBand = '';
+    if (sub === 'summit' || sub === 'summitres') {
+      const res = L.summits && L.summits[gen], all = Object.values(L.summits || {}), tot = all.reduce((a, x) => a + (x.dT || 0), 0);
+      stageBand = sub === 'summit'
+        ? `<div class="lv-qband lv-sband"><div class="eyebrow">🌍 기후 정상 회의 · ${DECADES[gen]}년대 · 모둠 다수결</div><h2>우리 모둠은 온실 기체를 얼마나 줄일까?</h2><p>감축은 <b>우리 모둠 에너지</b>를 쓰지만, 반 전체 약속의 평균만큼 <b>모든 모둠 세계의 앞으로 기온</b>이 내려갑니다. ${PLEDGES.map(P => `<span class="chip">${P.name} · ${P.cost ? '에너지 −' + P.cost : '비용 없음'}</span>`).join(' ')}</p></div>`
+        : res ? `<div class="lv-qband lv-sband"><div class="eyebrow">🌍 정상 회의 결과 · ${DECADES[gen]}년대</div><h2>반 전체 감축 달성률 <span class="up">${Math.round(res.avg / 2 * 100)}%</span> → 다음 세대부터 모든 세계 ${res.dT ? res.dT.toFixed(2) : '0'}°C</h2>
+          <span class="lv-meter big"><i data-k="summit:${gen}" data-v="${Math.round(res.avg / 2 * 100)}" data-from="0" style="width:${Math.round(res.avg / 2 * 100)}%;background:#4ADE80"></i></span>
+          <p>${Object.entries(res.pl || {}).map(([x, pl]) => `<span class="chip ${pl ? 'up' : ''}">${esc(gname(x))} ${PLEDGES[pl].name}</span>`).join(' ')} <span class="muted">· 지금까지 회의로 바뀐 기온 ${tot.toFixed(2)}°C</span></p></div>` : '';
+    }
+    if (sub === 'rescue' || sub === 'rescueres') {
+      const rg = sub === 'rescue' ? rescueGroups() : order().filter(x => { const rr = R.groups[x] && R.groups[x].rsr; return rr && rr.gen === gen; });
+      const first = rg.length ? runOf(rg[0]) : null, Q = first && sub === 'rescue' ? rescueQuizFor(Object.assign({}, first, { gen })) : null;
+      stageBand = `<div class="lv-qband lv-rband"><div class="eyebrow">🚑 긴급 구조 미션 · 모둠원 3분의 2가 맞히면 살아남는다</div><h2>${rg.map(x => esc(gname(x)) + ' ' + ANIMALS[G(x).animal].name).join(' · ')}${sub === 'rescueres' ? ' · ' + rg.map(x => R.groups[x].rsr.ok ? '<span class="up">구조 성공!</span>' : '<span class="down">구조 실패</span>').join(' ') : ''}</h2>
+        ${Q ? `<h3>${Q.q}</h3><ol>${Q.a.map(a => `<li>${a}</li>`).join('')}</ol>` : ''}</div>`;
+    }
+    if (sub === 'prep2') stageBand = `<div class="lv-qband"><div class="eyebrow">🎮 30초 미니게임 · 2020년대를 앞두고</div><h2>이미 따뜻해진 바다에서 먹이를 모아라! 모둠 평균만큼 보너스</h2></div>`;
     const lobbyBand = sub === 'lobby' ? `<div class="lv-lobby"><img src="${qr}" alt="학생 접속 QR" width="220" height="220"><div><h2>휴대폰으로 QR을 찍어 접속하세요</h2><p>이름을 쓰고 우리 모둠을 고르면 돼요. 수업 코드 <b class="num">${esc(cur.code)}</b></p><p class="muted">${esc(joinURL(cur.code))}</p></div></div>` : '';
     const cards = order().map(gid => {
       const g = G(gid), A = ANIMALS[g.animal], st = groupState(gid), run = st.run, ms = members(gid), roles = rolesOf(gid);
@@ -592,15 +731,20 @@ const LIVE = (function () {
       else if (sub === 'prep') { const n = ms.filter(m => R.prep && R.prep[m.uid]).length; status = `<span>60초 준비 ${n}/${ms.length}명 완료</span>`; }
       else if (run && run.extinctAt != null) status = `<span class="dead">멸종 · ${DECADES[run.extinctAt]}년대</span>`;
       else if (sub === 'event' && run) { const ev = findEvent(run.animal, run.order[gen]); const n = ms.filter(m => R.votes && R.votes[gen] && R.votes[gen][m.uid]).length; status = `<b>${esc(ev.title)}</b><span>투표 ${n}/${ms.length}</span>`; }
-      else if (sub === 'outcome' && run && run.last && run.last.gen === gen) { const ev = findEvent(run.animal, run.order[gen]); const Ls = run.last; const dp = Math.round(run.pop - Ls.before.pop); status = `<b>→ ${esc(ev.c[Ls.idx].l)}</b><span class="${dp >= 0 ? 'up' : 'down'}">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</span>${(Ls.roleNames || []).map(n => `<span class="role">★ ${esc(n)}</span>`).join('')}${(Ls.notes || []).map(k => { const N = noteInfo(k) || {}; return `<span class="down">${esc(N.icon)} ${esc(N.name)}</span>`; }).join('')}`; }
-      else if ((sub === 'quiz' || sub === 'quizres') && run) { const qt = R.groups[gid] && R.groups[gid].qt; const n = ms.filter(m => R.quiz && R.quiz[gen] && R.quiz[gen][m.uid]).length; status = sub === 'quiz' ? `<span>답변 ${n}/${ms.length}</span>` : (qt && qt.gen === gen ? `<span class="${qt.ok ? 'up' : 'down'}">${qt.ok ? '정답 · 보급품 획득' : '오답'}</span>` : ''); }
+      else if (sub === 'outcome' && run && run.last && run.last.gen === gen) { const ev = findEvent(run.animal, run.order[gen]); const Ls = run.last; const dp = Math.round(run.pop - Ls.before.pop); status = `<b>→ ${esc(ev.c[Ls.idx].l)}</b><span class="${dp >= 0 ? 'up' : 'down'}">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</span>${(Ls.roleNames || []).map(n => `<span class="role">★ ${esc(n)}</span>`).join('')}${(Ls.notes || []).map(k => { const N = noteInfo(k) || {}; return `<span class="down">${esc(N.icon)} ${esc(N.name)}</span>`; }).join('')}${Ls.chain ? `<span class="chainc" title="${esc(Ls.chain)}">⛓ 앞선 선택이 돌아옴</span>` : ''}${(() => { const ai = R.groups[gid] && R.groups[gid].aidIn; return ai && ai.gen === gen ? `<span class="up">🤝 ${ai.from.length}모둠 지원</span>` : ''; })()}${run.rescue != null ? '<b class="down">🚑 구조 미션 대기</b>' : ''}`; }
+      else if (sub === 'summit' && run) { const box = (R.summit && R.summit[gen]) || {}; status = `<span>🌍 약속 투표 ${ms.filter(m => box[m.uid]).length}/${ms.length}</span>`; }
+      else if (sub === 'summitres' && run) { const res = L.summits && L.summits[gen]; const pl = res && res.pl ? res.pl[gid] : null; status = pl != null ? `<span class="${pl ? 'up' : ''}">🌍 ${PLEDGES[pl].name}${PLEDGES[pl].cost ? ' · 에너지 −' + PLEDGES[pl].cost : ''}</span>` : ''; }
+      else if (sub === 'rescue' && run) { const box = (R.rescue && R.rescue[gen]) || {}; status = run.rescue != null ? `<b class="down">🚑 구조 미션</b><span>답변 ${ms.filter(m => box[m.uid]).length}/${ms.length}</span>` : ''; }
+      else if (sub === 'rescueres' && run) { const rr = R.groups[gid] && R.groups[gid].rsr; status = rr && rr.gen === gen ? `<b class="${rr.ok ? 'up' : 'down'}">🚑 ${rr.ok ? '구조 성공!' : '구조 실패'} (${rr.right}/${rr.n})</b>` : ''; }
+      else if (sub === 'prep2' && run) { const n = ms.filter(m => R.prep2 && R.prep2[m.uid]).length; const mg = R.groups[gid] && R.groups[gid].mg; status = `<span>🎮 미니게임 ${n}/${ms.length}명 완료</span>`; }
+      else if ((sub === 'quiz' || sub === 'quizres') && run) { const qt = R.groups[gid] && R.groups[gid].qt; const n = ms.filter(m => R.quiz && R.quiz[gen] && R.quiz[gen][m.uid]).length; status = sub === 'quiz' ? `<span>답변 ${n}/${ms.length}</span>` : (qt && qt.gen === gen ? `<span class="${qt.f >= 0.5 ? 'up' : 'down'}">${qt.right || 0}/${qt.n || 0}명 정답 · 보급품 ${Math.round((qt.f || 0) * 100)}%</span>` : ''); }
       else if (sub === 'end' && run) { status = run.extinctAt == null ? `<span class="up">생존 · ${A.popName} ${run.pop}</span>` : `<span class="dead">멸종 · ${DECADES[run.extinctAt]}년대</span>`; }
       const el = stageElapsed(), justExt = run && run.extinctAt === gen && sub === 'outcome', surv = sub === 'end' && run && run.extinctAt == null;
       let bub = '';
       if (sub === 'outcome' && run && run.last && run.last.gen === gen && el < 4500) { const dp = Math.round(run.pop - run.last.before.pop); bub = `<div class="lv-dbub ${dp >= 0 ? 'up' : 'down'}" style="animation-delay:-${Math.max(0, Math.round(el))}ms">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</div>`; }
       return `<article class="lv-card ${run && run.extinctAt != null ? 'ext' : ''} ${justExt ? 'just-ext' : ''} ${surv ? 'surv' : ''}" data-g="${gid}" ${justExt ? `style="--ed:-${Math.max(0, Math.round(el))}ms"` : ''}>
-        <header><b>${esc(g.name)}</b><span>${A.name}</span><span class="t" style="color:${tCol(st.T)}">+${f1(st.T)}°C</span><span class="sc" style="color:${SCOL[g.scen]}">${SCENARIOS[g.scen].name}</span></header>
-        <div class="lv-view" id="v_${gid}">${run && run.extinctAt != null ? '<div class="lv-stamp">멸종</div>' : ''}${surv ? '<div class="lv-sstamp">생존</div>' : ''}${bub}</div>
+        <header><b>${esc(g.name)}</b><span>${A.name}</span>${isSos(run) && sub !== 'end' ? '<span class="lv-sosb">🆘 구조 요청</span>' : ''}<span class="t" style="color:${tCol(st.T)}">+${f1(st.T)}°C</span><span class="sc" style="color:${SCOL[g.scen]}">${SCENARIOS[g.scen].name}</span></header>
+        <div class="lv-view" id="v_${gid}">${run && run.extinctAt != null ? '<div class="lv-stamp">멸종</div>' : ''}${run && run.rescue != null ? '<div class="lv-stamp warn">구조 미션</div>' : ''}${surv ? '<div class="lv-sstamp">생존</div>' : ''}${bub}</div>
         <div class="lv-stats"><span>${A.popName}</span>${barK(st.pop, '#7FD3FF', gid + ':p')}<span>${A.energyName}</span>${barK(st.energy, '#FFC23D', gid + ':e')}<span>${A.healthName}</span>${barK(st.health, '#4ADE80', gid + ':h')}<span>${A.habName}</span>${barK(st.hab, st.hab < 30 ? '#FB7185' : '#A78BFA', gid + ':a')}</div>
         <div class="lv-status">${status}</div>
         <div class="lv-members">${ms.map(m => `<span class="${roles[m.uid] ? 'role' : ''}">${roles[m.uid] ? '★' : ''}${esc(m.name)}</span>`).join('')}</div>
@@ -608,12 +752,19 @@ const LIVE = (function () {
     }).join('');
     let endBand = '';
     if (sub === 'end') {
-      const ranked = order().map(gid => ({ gid, run: runOf(gid) })).filter(x => x.run).sort((a, b) => (gensSurvived(b.run) - gensSurvived(a.run)) || (b.run.pop - a.run.pop));
-      endBand = `<div class="lv-endband"><h2>200년의 기록 · 같은 선택을 다른 세계에서 했다면?</h2><div class="lv-endgrid">${ranked.map(({ gid, run }) => { const reps = SCEN_ORDER.map(k => [k, replay(run, k)]); return `<div><b>${esc(G(gid).name)} · ${ANIMALS[run.animal].name}</b>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${barK(r.pop, SCOL[k], 'end:' + gid + ':' + k, 0)}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}</div>`; }).join('')}</div><p>온난화의 속도는 동물이 아니라 인류의 배출량이 정한다.</p></div>`;
+      const fr = fairRank(), aw = awards(), tot = Object.values(L.summits || {}).reduce((a, x) => a + (x.dT || 0), 0);
+      endBand = `<div class="lv-endband"><div class="lv-endcols">
+        <section><h2>🏆 공정 순위표</h2><p class="muted">같은 동물 · 같은 세계의 '보통 모둠'보다 얼마나 잘 버텼나</p>
+          <ol class="lv-rank">${fr.map((r, i) => `<li class="${i === 0 ? 'top' : ''}"><b>${i + 1}</b><span>${esc(gname(r.gid))} ${ANIMALS[r.run.animal].name} <small style="color:${SCOL[r.run.scen]}">${SCENARIOS[r.run.scen].name}</small></span><span class="muted">${r.sv >= GENS ? '생존 ' + r.run.pop : DECADES[r.sv] + '년대 멸종'}</span><span class="${r.diff >= 0 ? 'up' : 'down'}">${r.diff >= 0 ? '+' : ''}${r.diff}점</span></li>`).join('')}</ol></section>
+        <section><h2>🎖 상</h2><ul class="lv-awards">${aw.map(a => `<li><span>${a.icon}</span><div><b>${a.title}</b><small>${a.who}</small></div></li>`).join('') || '<li class="muted">점수를 모으는 중…</li>'}</ul></section>
+        <section><h2>같은 선택, 다른 세계</h2><div class="lv-endgrid">${fr.map(({ gid, run }) => { const reps = SCEN_ORDER.map(k => [k, replay(run, k)]); return `<div><b>${esc(gname(gid))} · ${ANIMALS[run.animal].name}</b>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${barK(r.pop, SCOL[k], 'end:' + gid + ':' + k, 0)}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}</div>`; }).join('')}</div></section>
+        </div><p>온난화의 속도는 동물이 아니라 인류의 배출량이 정한다.${tot ? ` 우리 반의 정상 회의는 기온을 ${tot.toFixed(2)}°C 바꿨다.` : ''}</p></div>`;
     }
-    ui.innerHTML = head + lobbyBand + quizBand + `<main class="lv-grid n${order().length}">${cards}</main>` + endBand + (sub === 'event' ? decadeBanner(gen, 'big') : '');
+    ui.innerHTML = head + lobbyBand + quizBand + stageBand + `<main class="lv-grid n${order().length}">${cards}</main>` + endBand + (sub === 'event' ? decadeBanner(gen, 'big') : '');
     animateMeters(ui);
     const sb = $('#bSound'); if (sb) sb.onclick = () => { Splash.enableSound(); schedule(); };
+    const bf = $('#bFull'); if (bf) bf.onclick = () => { try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) {} setTimeout(schedule, 300); };
+    const lb = ui.closest('.lv-board'); if (lb) lb.classList.toggle('isend', sub === 'end');
     Board3D.sync(order().map(gid => ({ id: gid, el: document.getElementById('v_' + gid), animal: G(gid).animal, state: Object.assign({}, groupState(gid), { fx: fxFor(gid) }) })));
     // 공지(특임대 · 기습 이벤트)
     const over = $('#bOver'), n = L.notice;
@@ -671,7 +822,8 @@ const LIVE = (function () {
     cur.lastG = gid;
     const A = ANIMALS[g.animal], st = groupState(gid), run = st.run, gen = Math.min(L.gen || 0, GENS - 1), sub = L.sub;
     const myRoleKey = rolesOf(gid)[uid], myRole = myRoleKey ? roleOf(g.animal, myRoleKey) : null, usedN = (usesOf(gid)[uid] || 0);
-    const head = `<header class="lv-phead"><div><b>${esc(g.name)}</b> · ${A.name} <span class="muted">· ${esc(meP.name)}</span></div><div class="lv-pclock"><span>${sub === 'lobby' || sub === 'prep' ? SUB_NAME[sub] : `${DECADES[gen]}년대 · ${SUB_NAME[sub]}`}</span><b data-clock></b></div></header>
+    const my = scoreOf(uid);
+    const head = `<header class="lv-phead"><div><b>${esc(g.name)}</b> · ${A.name} <span class="muted">· ${esc(meP.name)}</span> <span class="lv-myscore" title="개인 점수">⭐ ${my.total}</span></div><div class="lv-pclock"><span>${sub === 'lobby' || sub === 'prep' ? SUB_NAME[sub] : `${DECADES[gen]}년대 · ${SUB_NAME[sub]}`}</span><b data-clock></b></div></header>
       ${myRole ? `<div class="lv-role">★ 나는 <b>${myRole.name}</b> · ${myRole.ability}: ${abilityDesc(g.animal, myRole.type)} <span class="muted">(남은 ${Math.max(0, ROLE_USES - usedN)}번)</span></div>` : ''}`;
     const nb = (k, v) => `<b data-nk="me:${k}" data-n="${Math.round(v)}">${Math.round(v)}</b>`;
     const stats = run ? `<div class="lv-pstats"><span>${A.popName} ${nb('p', st.pop)}</span><span>${A.energyName} ${nb('e', st.energy)}</span><span>${A.healthName} ${nb('h', st.health)}</span><span>${A.habName} ${nb('a', st.hab)}</span><span style="color:${tCol(st.T)}">+${f1(st.T)}°C</span></div>` : '';
@@ -695,6 +847,13 @@ const LIVE = (function () {
           <span class="lv-vbar"><i style="width:${ms.length ? counts[i].length / ms.length * 100 : 0}%"></i></span><span class="lv-who">${counts[i].map(m => esc(m.name)).join(' · ') || '&nbsp;'}</span></button>`).join('')}</div>
         <p class="muted">눌러서 투표 · 시간 안에는 바꿀 수 있어요 · 모둠 다수결로 확정</p>
         ${myRole ? `<button class="btn ${abilOn ? 'ice' : ''} lg" id="pAbil" ${usedN >= ROLE_USES ? 'disabled' : ''}>${abilOn ? '★ 능력 사용 예약됨 (누르면 취소)' : usedN >= ROLE_USES ? '능력을 모두 썼어요' : `★ ${myRole.ability} 사용하기`}</button>` : ''}</div>`;
+      const myPr = R.pred && R.pred[gen] && R.pred[gen][uid];
+      body += `<div class="card lv-pred"><div class="eyebrow">🎯 나의 예측 · 맞히면 개인 점수 +1</div><p>이번 10년이 지나면 우리 ${A.popName}는?</p>
+        <div class="lv-prbtns"><button data-pr="1" class="${myPr && myPr.pr === 1 ? 'on' : ''}">▲ 늘어난다</button><button data-pr="-1" class="${myPr && myPr.pr === -1 ? 'on' : ''}">▼ 줄거나 그대로</button></div></div>`;
+      const sosOthers = sosGroups().filter(x => x !== gid), myAid = R.aid && R.aid[gen] && R.aid[gen][uid], aidLeft = AID.perStudent - my.aid;
+      if (isSos(run)) body += `<div class="card lv-sos"><b>🆘 우리 모둠이 위기예요!</b> 전자칠판에 구조 요청이 떴어요. 다른 모둠이 먹이를 보내 줄 수 있어요.</div>`;
+      if (sosOthers.length) body += `<div class="card lv-aid"><div class="eyebrow">🤝 구조 요청 · 우리 ${A.energyName} −${AID.cost} → 그 모둠 에너지 +${AID.gain} · 건강 +${AID.health} · 한 판에 ${AID.perStudent}번 (남은 ${Math.max(0, aidLeft)}번) · 개인 점수 +1</div>
+        <div class="lv-aidbtns">${sosOthers.map(x => { const on = myAid && myAid.to === x; return `<button data-aid="${x}" class="${on ? 'on' : ''}" ${!on && aidLeft <= 0 ? 'disabled' : ''}>${on ? '✓ 보내기 예약됨' : '먹이 보내기'} → <b>${esc(gname(x))}</b> ${ANIMALS[G(x).animal].name} <small>(${ANIMALS[G(x).animal].popName} ${Math.round(runOf(x).pop)})</small></button>`; }).join('')}</div></div>`;
     }
     else if (sub === 'outcome' || ((sub === 'quiz' || sub === 'quizres') && run.last)) {
       const ev = findEvent(run.animal, run.order[gen]), Ls = run.last;
@@ -703,18 +862,46 @@ const LIVE = (function () {
         <p class="lv-pick1">모둠 선택: <b>${esc(ev.c[Ls.idx].l)}</b>${tl && tl.gen === gen ? ` <small class="muted">(${tl.counts.join(' : ')}${tl.tie ? ', 동점 → 무작위' : ''})</small>` : ''}</p>
         <p class="lv-otext">→ ${esc(Ls.text)}${Ls.roll ? ` <small>(${Ls.roll.good ? '운이 따랐다' : '운이 없었다'})</small>` : ''}</p>
         <div class="deltas">${effChips(run.animal, Ls.eff) || ''}${(Ls.roleNames || []).map(n => `<span class="chip bonus">★ ${esc(n)}</span>`).join('')}${(Ls.notes || []).map(k => { const N = noteInfo(k) || {}; return `<span class="chip down">${esc(N.icon)} ${esc(N.name)}</span>`; }).join('')}</div>
+        ${Ls.chain ? `<p class="lv-chain">⛓ <b>앞선 선택이 돌아왔다</b> · ${esc(Ls.chain)} ${effChips(run.animal, Ls.chainE)}</p>` : ''}
+        ${(() => { const ai = R.groups[gid] && R.groups[gid].aidIn; return ai && ai.gen === gen ? `<p class="lv-aidin">🤝 ${ai.from.map(x => esc(gname(x))).join(' · ')}에서 먹이를 보냈어요 (${A.energyName} +${AID.gain * ai.from.length})</p>` : ''; })()}
+        ${(() => { const pr = R.pred && R.pred[gen] && R.pred[gen][uid]; if (!pr) return ''; const dp = run.pop - Ls.before.pop, hit = (dp > 0 && pr.pr === 1) || (dp <= 0 && pr.pr === -1); return `<p class="lv-prres ${hit ? 'up' : 'down'}">🎯 ${hit ? '예측 적중! 개인 점수 +1' : '예측이 빗나갔어요'}</p>`; })()}
+        ${run.rescue != null ? `<p class="lv-prres down">🚑 ${A.popName}가 0이 되었어요! 곧 긴급 구조 미션이 시작돼요. 모둠원 3분의 2가 맞히면 살아남아요.</p>` : ''}
         <p class="muted">10년의 자연 변화 · ${A.habName} ${Math.round(Ls.hab)} → ${A.popName} ${Ls.natural.dp > 0 ? '+' : ''}${Ls.natural.dp}</p>
         <div class="sci"><b>과학 노트</b> · ${ev.sci}</div></div>` : '';
       let quiz = '';
       if (sub === 'quiz' || sub === 'quizres') {
         const Q = quizFor(Object.assign({}, run, { gen })), my = R.quiz && R.quiz[gen] && R.quiz[gen][uid], qt = R.groups[gid] && R.groups[gid].qt;
         const qms = members(gid), qbox = (R.quiz && R.quiz[gen]) || {};
-        quiz = `<div class="card lv-quiz"><div class="eyebrow">📡 과학 무전 · 모둠 다수결이 정답이면 ${A.energyName} +12 · ${A.healthName} +5</div><h3>${Q.q}</h3>
+        quiz = `<div class="card lv-quiz"><div class="eyebrow">📡 과학 무전 · 맞힌 모둠원 비율만큼 ${A.energyName} 최대 +12 · ${A.healthName} 최대 +5 · 맞히면 개인 점수 +1</div><h3>${Q.q}</h3>
           <div class="lv-qopts">${Q.a.map((a, i) => { let c = ''; if (sub === 'quizres') { if (i === Q.c) c = 'right'; else if (my && my.a === i) c = 'wrong'; } else if (my && my.a === i) c = 'on'; return `<button class="lv-qopt ${c}" data-q="${i}" ${sub === 'quizres' ? 'disabled' : ''}><span>${'ABCD'[i]}</span>${a}</button>`; }).join('')}</div>
-          <p class="muted">${sub === 'quiz' ? `모둠 답변 ${qms.filter(m => qbox[m.uid]).length}/${qms.length}` : (qt && qt.gen === gen ? (qt.ok ? '<b class="up">모둠 정답! 보급품 도착</b>' : '<b class="down">모둠 오답</b>') : '')}</p>
+          <p class="muted">${sub === 'quiz' ? `모둠 답변 ${qms.filter(m => qbox[m.uid]).length}/${qms.length} · 맞힌 사람 비율만큼 보급품` : (qt && qt.gen === gen ? `<b class="${qt.f >= 0.5 ? 'up' : 'down'}">모둠 ${qt.right || 0}/${qt.n || 0}명 정답 · 보급품 ${A.energyName} +${quizGain(qt.f || 0).energy} · ${A.healthName} +${quizGain(qt.f || 0).health}</b>` : '')}</p>
           ${sub === 'quizres' ? `<p class="sci">${Q.e}</p>` : ''}</div>`;
       }
       body = (sub === 'quiz' || sub === 'quizres') ? quiz + outcome : outcome;
+    }
+    else if (sub === 'rescue' || sub === 'rescueres') {
+      const rr = R.groups[gid] && R.groups[gid].rsr;
+      if (sub === 'rescue' && run.rescue != null) {
+        const Q = rescueQuizFor(Object.assign({}, run, { gen })), mine = R.rescue && R.rescue[gen] && R.rescue[gen][uid], ms = members(gid), box = (R.rescue && R.rescue[gen]) || {};
+        body = `<div class="card lv-rescue"><div class="eyebrow">🚑 긴급 구조 미션 · 한 판에 한 번</div><h2>${A.name}를 살려라!</h2><p>모둠원 ${Math.max(1, Math.ceil(ms.length * 2 / 3))}명 이상이 맞히면 ${A.popName} ${TUNE.rp}로 다시 일어서요. 맞히면 개인 점수 +1</p><h3>${Q.q}</h3>${qOpts(Q, mine, false, 'data-rq')}<p class="muted">답변 ${ms.filter(m => box[m.uid]).length}/${ms.length}</p></div>`;
+      } else if (sub === 'rescueres' && rr && rr.gen === gen) {
+        body = `<div class="card lv-rescue ${rr.ok ? 'ok' : 'fail'}"><h2>${rr.ok ? '🚑 구조 성공!' : '구조 실패'}</h2><p>${rr.right}/${rr.n}명 정답 (필요 ${rr.need}명). ${rr.ok ? `${A.name}가 다시 일어섰어요. 이제 기회는 없어요.` : `${A.name}의 기록이 ${DECADES[gen]}년대에 멈췄어요.`}</p></div>`;
+      } else body = `<div class="card"><h3>🚑 ${rescueGroups().map(gname).join(' · ') || '다른 모둠'} 긴급 구조 미션 중</h3><p class="muted">전자칠판에서 함께 응원해요.</p></div>`;
+    }
+    else if (sub === 'summit' || sub === 'summitres') {
+      const mine = R.summit && R.summit[gen] && R.summit[gen][uid], box = (R.summit && R.summit[gen]) || {}, ms = members(gid), res = L.summits && L.summits[gen];
+      if (sub === 'summit') body = `<div class="card lv-summit"><div class="eyebrow">🌍 기후 정상 회의 · ${DECADES[gen]}년대</div><h2>우리 모둠은 온실 기체를 얼마나 줄일까?</h2>
+        <p>감축을 약속하면 <b>우리 ${A.energyName}</b>를 쓰지만, 반 전체 약속의 평균만큼 <b>모든 모둠 세계의 앞으로 기온</b>이 내려가요. 모둠 다수결로 정해요.</p>
+        <div class="lv-pledges">${PLEDGES.map((P, i) => { const n = ms.filter(m => box[m.uid] && box[m.uid].p === i).length; return `<button data-pl="${i}" class="${mine && mine.p === i ? 'on' : ''}"><b>${P.name}</b><small>${P.cost ? `우리 ${A.energyName} −${P.cost}` : '비용 없음'} · 기여 ${P.w}</small><span class="lv-vbar"><i style="width:${ms.length ? n / ms.length * 100 : 0}%"></i></span></button>`; }).join('')}</div>
+        <p class="muted">반 평균 기여 1당 앞으로 −${TUNE.sk}°C · 모두 '지금처럼'이면 아무 변화가 없어요.</p></div>`;
+      else body = res ? `<div class="card lv-summit"><div class="eyebrow">🌍 정상 회의 결과 · ${DECADES[gen]}년대</div><h2>반 전체 감축 달성률 ${Math.round(res.avg / 2 * 100)}%</h2>
+        <p>우리 모둠: <b>${PLEDGES[(res.pl || {})[gid] || 0].name}</b> · 다음 세대부터 모든 세계 기온 <b>${res.dT ? res.dT.toFixed(2) : '0'}°C</b></p>
+        <div class="lv-pledgegrid">${Object.entries(res.pl || {}).map(([x, p]) => `<span class="chip ${p ? 'up' : ''}">${esc(gname(x))} ${PLEDGES[p].name}</span>`).join('')}</div></div>` : '';
+    }
+    else if (sub === 'prep2') {
+      const sent = R.prep2 && R.prep2[uid];
+      body = sent ? `<div class="card"><h3>미니게임 결과를 보냈어요</h3><p>${A.prep.food} ${sent.food} · ${A.prep.special} ${sent.special} · 피해 ${sent.damage}</p><p class="muted">모둠원 평균만큼 ${A.energyName}·${A.popName}가 늘고, 피해만큼 ${A.healthName}가 줄어요.</p></div>`
+        : `<div class="card"><div class="eyebrow">🎮 30초 미니게임 · 2020년대를 앞두고</div><h3>지금은 1920년대보다 훨씬 따뜻해요</h3><p>${A.prep.goal}</p><button class="btn hot lg" id="pArena2">▶ 30초 시작</button></div>`;
     }
     else if (sub === 'end') {
       const alive = run.extinctAt == null, reps = SCEN_ORDER.map(k => [k, replay(run, k)]);
@@ -723,6 +910,10 @@ const LIVE = (function () {
         <div class="chain">${A.chain.map((c, i) => `${i ? '<i>→</i>' : ''}<span>${c}</span>`).join('')}</div>
         <h3>같은 선택, 다른 세계</h3>${reps.map(([k, r]) => `<div class="lv-rep"><span style="color:${SCOL[k]}">${SCENARIOS[k].name}</span>${bar(r.pop, SCOL[k])}<span>${r.survived >= GENS && r.pop > 0 ? '생존 ' + r.pop : DECADES[Math.min(r.survived, GENS - 1)] + '년대 멸종'}</span></div>`).join('')}
         <p class="muted">결과 코드 <b class="num">${resultCode(run)}</b></p></div>`;
+      const fr = fairRank(), rk = fr.findIndex(x => x.gid === gid), me2 = scoreOf(uid);
+      body += `<div class="card lv-myend"><h3>⭐ 내 점수 ${me2.total}점</h3><p>🎯 예측 ${me2.pred} · 📡 무전 ${me2.quiz} · 🚑 구조 ${me2.rs} · 🤝 지원 ${me2.aid} · ★ 특임대 ${me2.abil}</p>
+        ${rk >= 0 ? `<p>우리 모둠 공정 순위 <b>${rk + 1}위</b> / ${fr.length}모둠 <span class="${fr[rk].diff >= 0 ? 'up' : 'down'}">(보통 모둠보다 ${fr[rk].diff >= 0 ? '+' : ''}${fr[rk].diff}점)</span></p>` : ''}
+        <ul class="lv-awards">${awards().map(a => `<li><span>${a.icon}</span><div><b>${a.title}</b><small>${a.who}</small></div></li>`).join('')}</ul></div>`;
     }
     let fxo = '';
     if (sub === 'event') fxo = decadeBanner(gen, 'small');
@@ -738,6 +929,11 @@ const LIVE = (function () {
     ui.querySelectorAll('[data-q]').forEach(b => b.onclick = () => NET.put(`${roomPath(cur.code)}/quiz/${gen}/${uid}`, { g: gid, a: +b.dataset.q, t: NET.now() }));
     const ab = $('#pAbil'); if (ab) ab.onclick = () => { const on = R.abil && R.abil[gen] && R.abil[gen][uid]; NET.put(`${roomPath(cur.code)}/abil/${gen}/${uid}`, on ? null : { g: gid, t: NET.now() }); };
     const pa = $('#pArena'); if (pa) pa.onclick = () => startArena(g.animal, gid);
+    const pa2 = $('#pArena2'); if (pa2) pa2.onclick = () => startArena(g.animal, gid, true);
+    ui.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => { const v = +b.dataset.pr, c0 = R.pred && R.pred[gen] && R.pred[gen][uid]; NET.put(`${roomPath(cur.code)}/pred/${gen}/${uid}`, c0 && c0.pr === v ? null : { pr: v, g: gid, t: NET.now() }); });
+    ui.querySelectorAll('[data-aid]').forEach(b => b.onclick = () => { const to = b.dataset.aid, c0 = R.aid && R.aid[gen] && R.aid[gen][uid]; NET.put(`${roomPath(cur.code)}/aid/${gen}/${uid}`, c0 && c0.to === to ? null : { to, g: gid, t: NET.now() }); });
+    ui.querySelectorAll('[data-rq]').forEach(b => b.onclick = () => NET.put(`${roomPath(cur.code)}/rescue/${gen}/${uid}`, { g: gid, a: +b.dataset.rq, t: NET.now() }));
+    ui.querySelectorAll('[data-pl]').forEach(b => b.onclick = () => NET.put(`${roomPath(cur.code)}/summit/${gen}/${uid}`, { g: gid, p: +b.dataset.pl, t: NET.now() }));
     // 경보
     const n = L.notice, al = $('#pAlert');
     if (al && noticeFresh(n) && cur.shownNotice !== n.t) {
@@ -749,20 +945,20 @@ const LIVE = (function () {
     }
     tickClocks();
   }
-  function startArena(animal, gid) {
-    const ui = $('#pUI'), A = ANIMALS[animal];
+  function startArena(animal, gid, mid) {
+    const ui = $('#pUI'), A = ANIMALS[animal], dur = mid ? 30 : 60;
     cur.arena = true;
     ui.innerHTML = `<div class="lv-arena"><div class="stageBox" id="aStage"></div><div class="vign" id="vign"></div>
-      <div class="hud"><div class="timer" id="tm"><span class="t" id="tt">60</span><span class="tbar"><i id="tb" style="width:100%"></i></span></div>
+      <div class="hud"><div class="timer" id="tm"><span class="t" id="tt">${dur}</span><span class="tbar"><i id="tb" style="width:100%"></i></span></div>
       <div class="cnt"><span class="dot f"></span><div><div class="v" id="cf">0</div><small>${A.prep.food}</small></div></div>
       <div class="cnt"><span class="dot s"></span><div><div class="v" id="cs">0</div><small>${A.prep.special}</small></div></div>
       <div class="cnt"><span class="dot h"></span><div><div class="v" id="cd">0</div><small>피해</small></div></div></div><div class="status" id="st" hidden></div></div>`;
     const box = $('#aStage'); if (World3D.available()) { box.appendChild(World3D.element()); World3D.setBiome(animal); World3D.setAutoRotate(false); }
     World3D.startArena(animal, {
-      onTick(o) { const q = s => document.getElementById(s); if (!q('tt')) return; q('tt').textContent = Math.ceil(o.left); q('tb').style.width = (o.left / 60 * 100) + '%'; q('cf').textContent = o.food; q('cs').textContent = o.special; q('cd').textContent = o.damage; q('st').hidden = !o.status; q('st').textContent = o.status; q('st').classList.toggle('hurt', !!o.hurt); q('vign').classList.toggle('on', !!o.hurt); },
+      onTick(o) { const q = s => document.getElementById(s); if (!q('tt')) return; q('tt').textContent = Math.ceil(o.left); q('tb').style.width = (o.left / dur * 100) + '%'; q('tm').classList.toggle('low', o.left < 10); q('cf').textContent = o.food; q('cs').textContent = o.special; q('cd').textContent = o.damage; q('st').hidden = !o.status; q('st').textContent = o.status; q('st').classList.toggle('hurt', !!o.hurt); q('vign').classList.toggle('on', !!o.hurt); },
       onPick(sp) { if (sp) toast(A.prep.special + ' 발견! ★', 'good'); },
-      async onEnd(res) { cur.arena = false; await NET.put(`${roomPath(cur.code)}/prep/${myUid()}`, { g: gid, food: res.food, special: res.special, damage: res.damage, t: NET.now() }); renderJoin(); },
-    });
+      async onEnd(res) { cur.arena = false; await NET.put(`${roomPath(cur.code)}/${mid ? 'prep2' : 'prep'}/${myUid()}`, { g: gid, food: res.food, special: res.special, damage: res.damage, t: NET.now() }); renderJoin(); },
+    }, mid ? { dur: 30, hard: true } : null);
   }
 
   return { claims, start, stop: stopAll };

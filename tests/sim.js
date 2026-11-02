@@ -27,8 +27,19 @@ function playClassGroup(animal, scen, i, o) {
       // 특임대: 위태로울 때 또는 가끔 능력 사용
       const roles = [];
       types.forEach((t, k) => { if (uses[k] < E.ROLE_USES && !roles.includes(t) && (run.pop < 35 || run.energy < 30 || r() < 0.15)) { roles.push(t); uses[k]++; } });
-      E.resolveRun(run, c, { roles, surprises: (o.sur && o.sur[run.gen]) || [] });
-    } else if (run.sub === 'quiz') { E.applyQuiz(run, r() < quizOk); run.sub = 'quizdone'; }
+      E.resolveRun(run, c, { roles, surprises: (o.sur && o.sur[run.gen]) || [], rescue: !o.basic });
+      if (!o.basic) {
+        // 다른 모둠의 지원: 위기(개체 수 25 미만)일 때 가끔 받는다
+        if (run.pop > 0 && run.pop < 25 && r() < 0.5) E.applyAid(run, E.AID.gain * (1 + Math.floor(r() * 3)), E.AID.health);
+        // 긴급 구조 미션: 모둠원 2/3 이상 정답이면 성공(약 60%)
+        if (run.rescue != null) E.applyRescue(run, r() < 0.6);
+      }
+    } else if (run.sub === 'quiz') { E.applyQuiz(run, o.basic ? r() < quizOk : Math.max(0, Math.min(1, quizOk + (r() - 0.5) * 0.4))); run.sub = 'quizdone'; }
+    if (!o.basic && run.phase === 'play' && run.extinctAt == null && (run.sub === 'quizdone' || (run.sub === 'outcome' && !E.QUIZ_GENS.includes(run.gen)))) {
+      // 정상 회의: 반 평균 약속 0.6~1.4, 우리 모둠은 그 근처
+      if (E.SUMMIT_GENS.includes(run.gen)) { const avg = 0.6 + r() * 0.8; const mine = Math.max(0, Math.min(2, Math.round(avg + (r() - 0.5) * 1.2))); E.applySummit(run, mine, E.summitDT(avg)); }
+      if (run.gen === E.MID_GEN) E.applyMidGame(run, { food: 3 + Math.floor(r() * 6), special: Math.floor(r() * 2.2), damage: Math.floor(r() * 30) });
+    }
     E.advance(run);
   }
   return run;

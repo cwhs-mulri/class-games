@@ -153,3 +153,41 @@ test('과학 무전: 정답 위치가 한쪽에 몰리지 않고, 같은 수업 
   a.gen = b.gen = E.QUIZ_GENS[0];
   assert.deepEqual(E.quizFor(a).a, E.quizFor(b).a);
 });
+
+test('연쇄 사건: 앞 세대 선택이 뒤 세대에 돌아온다', () => {
+  // 명태: 1970년대(5세대) '그대로 다닌다' → 2000년대(8세대) '0톤'에서 개체 수 −8
+  const play = (c5) => { const run = E.newRun('CH', 'A', 'pollock', 'low'); E.applyPrep(run, { food: 10, special: 2, damage: 0 });
+    for (let g = 0; g <= 8; g++) { const ev = E.findEvent('pollock', run.order[g]); const idx = g === 5 ? ev.c.findIndex(x => x.l === c5) : 0; E.resolveRun(run, idx); if (g < 8) { if (E.hasQuiz(run)) { E.applyQuiz(run, 1); } run.gen++; run.sub = 'event'; } } return run; };
+  const a = play('그대로 다닌다'), b = play('어린 무리를 깊은 곳으로 보낸다');
+  assert.ok(a.last.chain && /노가리/.test(a.last.chain)); assert.equal(b.last.chain, null);
+  for (const k of E.ANIMAL_ORDER) assert.ok(E.allEvents(k).some(e => e.chain), k + ' 연쇄 사건');
+});
+
+test('정상 회의·지원·중간 미니게임·구조가 리플레이에도 반영된다', () => {
+  const run = E.newRun('77', 'A', 'bear', 'mid'); E.applyPrep(run, { food: 8, special: 1, damage: 15 });
+  while (run.phase === 'play') {
+    if (run.sub === 'event') { E.resolveRun(run, 0, { rescue: true }); if (run.rescue != null) E.applyRescue(run, true); if (run.gen === 3) E.applyAid(run, 5, 2); }
+    else if (run.sub === 'quiz') { E.applyQuiz(run, 0.5); run.sub = 'quizdone'; }
+    if (run.extinctAt == null && (run.sub === 'quizdone' || (run.sub === 'outcome' && !E.QUIZ_GENS.includes(run.gen)))) {
+      if (E.SUMMIT_GENS.includes(run.gen)) E.applySummit(run, 2, E.summitDT(1.5));
+      if (run.gen === E.MID_GEN) E.applyMidGame(run, { food: 6, special: 1, damage: 10 });
+    }
+    E.advance(run);
+  }
+  assert.equal(E.replay(run, 'mid').pop, run.pop);
+  assert.ok(run.recs[E.SUMMIT_GENS[0]].sm && run.recs[E.MID_GEN].mg && run.recs[3].aid);
+  assert.ok(E.summitDT(2) < E.summitDT(1) && E.summitDT(0) === -0);
+});
+
+test('긴급 구조: 처음 쓰러지면 한 번 기회, 실패하면 멸종', () => {
+  const run = E.newRun('R', 'A', 'coral', 'high'); E.applyPrep(run, { food: 0, special: 0, damage: 60 });
+  run.pop = 1; run.energy = 0; run.health = 0;
+  E.resolveRun(run, 0, { rescue: true });
+  assert.equal(run.rescue, 0); assert.equal(run.extinctAt, null);
+  E.applyRescue(run, false); assert.equal(run.extinctAt, 0);
+  const r2 = E.newRun('R2', 'A', 'coral', 'high'); E.applyPrep(r2, { food: 0, special: 0, damage: 60 }); r2.pop = 1; r2.energy = 0; r2.health = 0;
+  E.resolveRun(r2, 0, { rescue: true }); E.applyRescue(r2, true);
+  assert.ok(r2.pop > 0 && r2.rescueUsed && r2.extinctAt == null);
+  assert.ok(E.baselineScore('bear', 'low') > E.baselineScore('bear', 'high'));
+  const q = E.newRun('Q', 'A', 'bear', 'low'); E.applyPrep(q, { food: 2, special: 0, damage: 0 }); const e0 = q.energy; E.applyQuiz(q, 0.5); assert.equal(q.energy, Math.min(100, e0 + 6));
+});

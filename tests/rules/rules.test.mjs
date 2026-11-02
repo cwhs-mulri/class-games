@@ -98,3 +98,19 @@ test('학생은 자기 자리만 쓴다', async () => {
   await assertFails(student().ref('rooms/1111/players/other').set({ name: '남', g: 'g1' }));
   await assertFails(student().ref('rooms/1111/votes/0/s-uid').set({ c: 7, g: 'g1' }));
 });
+
+test('새 활동: 예측·지원·구조·정상 회의·미니게임은 학생 자기 자리, 점수는 교사만', async () => {
+  const s = student();
+  await assertSucceeds(s.ref('rooms/1111/pred/0/s-uid').set({ pr: 1, g: 'g1' }));
+  await assertFails(s.ref('rooms/1111/pred/0/s-uid').set({ pr: 3, g: 'g1' }));
+  await assertSucceeds(s.ref('rooms/1111/aid/0/s-uid').set({ to: 'g2', g: 'g1' }));
+  await assertSucceeds(s.ref('rooms/1111/aid/0/s-uid').remove());
+  await assertSucceeds(s.ref('rooms/1111/rescue/4/s-uid').set({ a: 2, g: 'g1' }));
+  await assertSucceeds(s.ref('rooms/1111/summit/10/s-uid').set({ p: 2, g: 'g1' }));
+  await assertFails(s.ref('rooms/1111/summit/10/s-uid').set({ p: 5, g: 'g1' }));
+  await assertSucceeds(s.ref('rooms/1111/prep2/s-uid').set({ food: 5, special: 1, damage: 10, g: 'g1' }));
+  await assertFails(s.ref('rooms/1111/summit/10/other').set({ p: 1, g: 'g1' }));
+  await assertFails(s.ref('rooms/1111/scores/s-uid').set({ pred: 99 }));
+  await assertSucceeds(tA().ref('rooms/1111/scores/s-uid').set({ pred: 1 }));
+  await assertFails(tB().ref('rooms/1111/scores/s-uid').set({ pred: 1 }));
+});

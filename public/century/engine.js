@@ -27,7 +27,7 @@ const ANIMALS = {
     key: 'bear', letter: 'B', name: '북극곰', place: '북극해', habName: '해빙 면적', energyName: '지방 비축', popName: '개체군', healthName: '건강',
     tagline: '얼음이 사라지면 사냥할 발판도 사라진다',
     threat: '해빙 감소 → 사냥 기간 단축',
-    sens: { hab: 84, heat: 0, acid: 0 },
+    sens: { hab: 100, heat: 1.4, acid: 0 },
     prep: { food: '물범', special: '눈 굴 자리', hazard: '차가운 바다', goal: '얼음 위에서 물범을 사냥해 지방을 모으세요. 해빙은 60초 동안 점점 녹아요. 물속에서는 느려지고 체력이 줄어요. 북쪽 육지의 눈 굴 자리를 찾으면 새끼를 키우기 좋아요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '북극 기온 상승', '해빙 감소', '사냥 기간 단축', '굶주림 · 번식 실패'],
     intro: { id: 'b0', title: '얼음 위의 봄', text: '물범 사냥철이 시작됐다. 해빙 위 숨구멍 앞에서 몇 시간이고 숨을 죽인다.',
@@ -79,7 +79,7 @@ const ANIMALS = {
     key: 'penguin', letter: 'P', name: '황제펭귄', place: '남극 해안', habName: '정착빙', energyName: '체지방', popName: '번식 군집', healthName: '건강',
     tagline: '새끼가 자랄 때까지 얼음이 버텨 줘야 한다',
     threat: '정착빙 조기 붕괴 → 새끼 익사',
-    sens: { hab: 72, heat: 0, acid: 0 },
+    sens: { hab: 81, heat: 0, acid: 0 },
     prep: { food: '크릴', special: '단단한 번식지', hazard: '표범물범', goal: '바다에 뛰어들어 크릴을 모으세요. 물속에서는 빠르지만 표범물범을 조심하세요. 얼음 위의 단단한 번식지를 찾으면 새끼를 지키기 좋아요. 얼음 가장자리는 점점 갈라져요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '남극 바다 수온 상승', '정착빙 조기 붕괴', '새끼 익사 · 크릴 감소', '번식 실패'],
     intro: { id: 'p0', title: '겨울 번식지로', text: '영하 40도의 겨울. 수컷들은 알을 발등에 올리고 서로 몸을 붙여 거대한 허들을 만든다.',
@@ -87,7 +87,7 @@ const ANIMALS = {
       c: [ { l: '허들 안쪽으로 파고든다', e: { energy: 5, health: 5 }, t: '동료들의 체온 덕분에 혹한을 견뎠다.' },
            { l: '바다 가까운 가장자리에 자리 잡는다', r: { p: .6, good: { e: { energy: 12 }, t: '바다가 가까워 먹이를 자주 구했다.' }, bad: { e: { health: -10 }, t: '눈보라를 정면으로 맞았다.' } } } ] },
     events: [
-      [ { id: 'p1', title: '일찍 갈라진 얼음', text: '새끼들의 방수 깃털이 다 나기도 전에 발밑 얼음이 갈라지기 시작했다.',
+      [ { chain: { flag: 'spread', e: { pop: 5 }, t: '1990년대에 번식지를 여러 곳으로 넓혀 둔 덕분에 한 곳이 깨져도 다른 곳의 새끼들이 살아남았다.' }, id: 'p1', title: '일찍 갈라진 얼음', text: '새끼들의 방수 깃털이 다 나기도 전에 발밑 얼음이 갈라지기 시작했다.',
           sci: '2022년 남극 벨링스하우젠해에서는 해빙이 기록적으로 줄어 황제펭귄 번식지 5곳 중 4곳에서 새끼가 거의 살아남지 못했다. 깃털이 다 나기 전에 얼음이 깨졌기 때문이다.',
           c: [ { l: '새끼들을 안쪽 단단한 얼음으로 옮긴다', e: { energy: -12 }, t: '힘들게 새끼들을 안쪽으로 데려갔다.' },
                { l: '그대로 기다린다', r: { p: .4, flagP: { colony: .7 }, good: { e: { pop: 5 }, t: '얼음이 마지막까지 버텨 주었다.' }, bad: { e: { pop: -18 }, t: '얼음이 깨지며 새끼들이 바다에 빠졌다.' } } } ] },
@@ -129,13 +129,13 @@ const ANIMALS = {
     key: 'coral', letter: 'C', name: '산호', place: '열대 산호초', habName: '수온 적합도', energyName: '영양분', popName: '산호 면적', healthName: '공생조류',
     tagline: '바다가 1~2°C만 뜨거워져도 하얗게 질린다',
     threat: '해양 열파 → 백화 · 산성화',
-    sens: { hab: 70, heat: 0.5, acid: 0.01 },
+    sens: { hab: 78, heat: 0.5, acid: 0.01 },
     prep: { food: '플랑크톤', special: '공생조류', hazard: '해양 열파', goal: '산호 유생이 되어 플랑크톤을 먹고, 초록빛 공생조류를 모으세요. 뜨거운 바닷물(빨간 영역)은 점점 넓어져요. 왕관불가사리도 피하세요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화 + 바다의 CO₂ 흡수', '수온 상승 · 해양 산성화', '공생조류 방출(백화) · 골격 약화', '영양 부족', '산호 폐사'],
     intro: { id: 'c0', title: '산란의 밤', text: '보름달이 뜬 밤, 산호들이 일제히 분홍빛 알과 정자 묶음을 내뿜었다. 바다가 별처럼 반짝인다.',
       sci: '산호는 몸속에 사는 공생조류(황록공생조류)가 광합성으로 만든 양분을 받아 살아간다. 산호의 화려한 색도 이 공생조류 덕분이다.',
       c: [ { l: '얕고 햇빛 많은 곳에 정착한다', e: { energy: 10 }, t: '햇빛이 풍부해 공생조류가 양분을 넉넉히 만들었다.' },
-           { l: '조금 깊고 시원한 곳에 정착한다', e: { energy: 3, hab: 6 }, t: '빛은 조금 약하지만 물이 시원하다.' } ] },
+           { set: 'deep', l: '조금 깊고 시원한 곳에 정착한다', e: { energy: 3, hab: 6 }, t: '빛은 조금 약하지만 물이 시원하다.' } ] },
     events: [
       [ { id: 'c1', title: '첫 해양 열파', text: '수온이 평년보다 1°C 높은 날이 몇 주째 이어진다. 산호의 색이 옅어지기 시작했다.',
           sci: '수온이 평소보다 1~2°C 높은 상태가 몇 주 이어지면 산호는 공생조류를 몸 밖으로 내보낸다. 투명한 몸 아래 하얀 골격이 드러나는 것이 백화 현상이다.',
@@ -179,13 +179,13 @@ const ANIMALS = {
     key: 'pollock', letter: 'F', name: '명태', place: '동해', habName: '냉수대', energyName: '먹이', popName: '어군', healthName: '건강',
     tagline: '차가운 동해가 사라지면 갈 곳이 없다',
     threat: '동해 수온 상승 → 냉수대 축소',
-    sens: { hab: 84, heat: 0.5, acid: 0 },
+    sens: { hab: 94, heat: 0.5, acid: 0 },
     prep: { food: '동물성 플랑크톤', special: '산란장', hazard: '따뜻한 물 · 그물', goal: '명태 떼를 이끌고 차가운 바다에서 플랑크톤을 먹으세요. 남쪽에서 따뜻한 물이 점점 올라와요(주황 영역). 그물도 피하세요. 북서쪽 연안의 산란장을 찾으면 어군이 늘어요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '동해 수온 상승', '냉수대 축소 · 먹이 변화', '서식지 북상 (+ 어린 명태 남획)', '동해 명태 감소'],
     intro: { id: 'f0', title: '동해의 겨울', text: '차가운 북한 한류를 따라 동해 연안으로 산란하러 내려왔다.',
       sci: '명태는 2~10°C 정도의 찬물을 좋아하는 한류성 어종이다. 1981년 동해에서는 명태가 한 해 약 16만 톤이나 잡혔다.',
       c: [ { l: '연안 가까이에서 산란한다', e: { energy: 5, pop: 5 }, t: '연안 산란장에서 알을 많이 낳았다.' },
-           { l: '먼 바다 깊은 곳에서 산란한다', e: { hab: 5 }, t: '차갑고 깊은 곳을 골랐다.' } ] },
+           { set: 'deepsp', l: '먼 바다 깊은 곳에서 산란한다', e: { hab: 5 }, t: '차갑고 깊은 곳을 골랐다.' } ] },
     events: [
       [ { id: 'f1', title: '따뜻해진 동해', text: '동해 표층 수온이 올라 차가운 물이 점점 줄어든다.',
           sci: '동해는 최근 50여 년 동안 표층 수온이 약 1.4°C 올라 우리나라 바다 중 상승 폭이 가장 컸다. 전 세계 바다 평균보다 빠르다.',
@@ -254,16 +254,16 @@ const HISTORY = {
     { id: 'bh6', title: '지방 속 오염 물질', text: '먹이를 따라 올라온 낯선 물질이 몸속 지방에 쌓인다.',
       sci: 'PCB 같은 잔류성 유기 오염 물질은 잘 분해되지 않고 먹이 사슬 위로 갈수록 농도가 높아진다(생물 농축). 최상위 포식자인 북극곰에게 가장 많이 쌓인다.',
       c: [ { l: '먹이를 가려 먹는다', e: { energy: -8, health: 4 }, t: '배는 덜 불렀지만 몸은 덜 상했다.' },
-           { l: '가리지 않고 먹는다', e: { energy: 6, health: -8 }, t: '배는 불렀지만 몸이 약해졌다.' } ] },
+           { set: 'pcb', l: '가리지 않고 먹는다', e: { energy: 6, health: -8 }, t: '배는 불렀지만 몸이 약해졌다.' } ] },
     { id: 'bh7', title: '얇아지는 얼음', text: '몇 해째 얼음이 예전보다 얇다. 여름이 끝날 무렵이면 얼음 가장자리가 멀리 물러난다.',
       sci: '1979년 인공위성 관측이 시작된 뒤 북극의 여름 해빙 면적은 꾸준히 줄어들고 있다.',
-      c: [ { l: '얼음을 따라 북쪽으로 간다', e: { energy: -10, hab: 5 }, t: '두꺼운 얼음이 남은 곳을 찾았다.' },
+      c: [ { set: 'north', l: '얼음을 따라 북쪽으로 간다', e: { energy: -10, hab: 5 }, t: '두꺼운 얼음이 남은 곳을 찾았다.' },
            { l: '익숙한 바다에 머문다', e: { hab: -4 }, t: '사냥할 수 있는 날이 조금씩 줄어든다.' } ] },
     { id: 'bh8', title: '2007년의 여름', text: '여름 해빙이 관측 이래 가장 작게 줄어들었다. 헤엄쳐야 할 거리가 늘었다.',
       sci: '2007년 여름 북극 해빙은 당시 위성 관측 사상 최소였고, 2012년에는 그 기록마저 깨졌다.',
       c: [ { l: '육지에서 굶으며 버틴다', e: { energy: -14 }, t: '여름 내내 지방을 태웠다.' },
            { l: '먼 얼음까지 헤엄친다', r: { p: .55, good: { e: { energy: 10 }, t: '긴 수영 끝에 얼음에 닿아 사냥했다.' }, bad: { e: { health: -15, pop: -6 }, t: '새끼 몇 마리가 긴 수영을 버티지 못했다.' } } } ] },
-    { id: 'bh9', title: '야윈 곰', text: '해안 마을 근처에 야윈 북극곰이 자주 나타난다. 사람들이 사진을 찍어 세상에 알린다.',
+    { chain: { flag: 'pcb', e: { health: -8 }, t: '1980년대에 지방 속에 쌓인 오염 물질이 몸을 약하게 만들었다.' }, id: 'bh9', title: '야윈 곰', text: '해안 마을 근처에 야윈 북극곰이 자주 나타난다. 사람들이 사진을 찍어 세상에 알린다.',
       sci: '얼음이 없는 기간이 길어지면 북극곰이 굶는 기간도 길어진다. 캐나다 허드슨만 서부의 북극곰은 1980년대 이후 크게 줄었다.',
       c: [ { l: '마을 쓰레기장을 뒤진다', r: { p: .5, good: { e: { energy: 12 }, t: '먹을 것을 찾았다.' }, bad: { e: { pop: -8 }, t: '사람과 충돌해 무리가 다쳤다.' } } },
            { l: '해안에서 쉬며 기다린다', e: { energy: -6, health: 4 }, t: '움직임을 줄여 버텼다.' } ] },
@@ -295,7 +295,7 @@ const HISTORY = {
            { l: '사냥을 늘린다', e: { energy: 8, health: -3 }, t: '배는 불렀지만 조금 지쳤다.' } ] },
     { id: 'ph7', title: '환경 보호 의정서', text: '남극의 광물 자원 개발을 막는 약속이 더해졌다.',
       sci: '1991년 남극 환경 보호 의정서(마드리드 의정서)는 남극에서 광물 자원 개발을 금지했다.',
-      c: [ { l: '번식지를 넓힌다', e: { pop: 5 }, t: '새끼들이 늘었다.' },
+      c: [ { set: 'spread', l: '번식지를 넓힌다', e: { pop: 5 }, t: '새끼들이 늘었다.' },
            { l: '지방을 비축한다', e: { energy: 8 }, t: '힘을 비축했다.' } ] },
     { id: 'ph8', title: '라르센 B 빙붕', text: '남극 반도의 거대한 빙붕이 몇 주 만에 산산이 부서졌다.',
       sci: '2002년 남극 반도의 라르센 B 빙붕(서울 면적의 약 5배)이 몇 주 만에 무너졌다. 남극 반도는 20세기 후반 가장 빠르게 따뜻해진 지역 중 하나였다.',
@@ -339,7 +339,7 @@ const HISTORY = {
       sci: '폭약·독극물 어업과 무분별한 해안 개발은 기후 변화와 함께 산호초를 위협하는 주요 원인이다.',
       c: [ { l: '부서진 곳을 메운다', e: { energy: -10, pop: 2 }, t: '천천히 회복했다.' },
            { l: '남은 곳을 지킨다', e: { pop: -6 }, t: '부서진 산호초는 돌아오지 않았다.' } ] },
-    { id: 'ch9', title: '연이은 대백화', text: '두 해 연속 거대한 열파가 몰려왔다. 회복할 틈이 없다.',
+    { chain: { flag: 'deep', e: { health: 6 }, t: '1920년대에 깊고 시원한 곳에 자리 잡은 산호 일부가 열파를 덜 겪었다.' }, id: 'ch9', title: '연이은 대백화', text: '두 해 연속 거대한 열파가 몰려왔다. 회복할 틈이 없다.',
       sci: '그레이트배리어리프에서는 2016년과 2017년 연이어 대규모 백화가 일어나 산호가 크게 죽었다.',
       c: [ { l: '깊은 곳의 산호를 지킨다', e: { health: -8, hab: 3 }, t: '깊은 곳 산호는 살아남았다.' },
            { l: '모든 곳에서 버틴다', r: { p: .45, good: { e: { health: 2 }, t: '기적처럼 버텨 냈다.' }, bad: { e: { pop: -14 }, t: '넓은 산호초가 죽었다.' } } } ] },
@@ -364,16 +364,16 @@ const HISTORY = {
     { id: 'fh5', title: '노가리까지', text: '어린 명태(노가리)까지 그물에 걸리기 시작했다.',
       sci: '1970년대 이후 어린 명태인 노가리 어획이 크게 늘었다. 1980년대에는 잡힌 명태의 대부분이 어린 개체였다.',
       c: [ { l: '어린 무리를 깊은 곳으로 보낸다', e: { energy: -8, pop: -3 }, t: '어린 명태 일부를 지켰다.' },
-           { l: '그대로 다닌다', e: { pop: -10 }, t: '많은 노가리가 그물에 걸렸다.' } ] },
+           { set: 'juv', l: '그대로 다닌다', e: { pop: -10 }, t: '많은 노가리가 그물에 걸렸다.' } ] },
     { id: 'fh6', title: '역대 최대 어획', text: '그물이 터질 듯 명태가 잡힌다는 소식이 들린다.',
       sci: '1981년 동해의 명태 어획량은 약 16만 6천 톤(노가리 포함)으로 최고를 기록했다. 그 뒤로는 급격히 줄었다.',
       c: [ { l: '북쪽으로 피한다', e: { energy: -10, pop: -4 }, t: '먼 길을 피했다.' },
            { l: '흩어져 숨는다', r: { p: .45, good: { e: { pop: -2 }, t: '대부분 그물을 피했다.' }, bad: { e: { pop: -14 }, t: '무리 상당수가 잡혔다.' } } } ] },
-    { id: 'fh7', title: '줄어드는 어군', text: '한때 가득했던 무리가 눈에 띄게 줄었다. 바다도 조금씩 따뜻해진다.',
+    { chain: { flag: 'deepsp', e: { pop: 4 }, t: '1920년대부터 깊은 곳에서 산란해 온 무리가 따뜻해진 연안보다 오래 버텼다.' }, id: 'fh7', title: '줄어드는 어군', text: '한때 가득했던 무리가 눈에 띄게 줄었다. 바다도 조금씩 따뜻해진다.',
       sci: '1995년 동해 명태 어획량은 1만 톤 아래로 떨어졌다. 남획과 수온 상승이 함께 영향을 준 것으로 본다.',
       c: [ { l: '찬물을 찾아 북쪽으로', e: { energy: -10, hab: 4 }, t: '찬물을 찾아냈다.' },
            { l: '고향 바다에 남는다', e: { health: -6 }, t: '따뜻한 물에 지쳤다.' } ] },
-    { id: 'fh8', title: '0톤', text: '동해에서 명태가 더 이상 잡히지 않는다는 이야기가 들린다.',
+    { chain: { flag: 'juv', e: { pop: -8 }, t: '1970년대에 어린 명태(노가리)까지 잡히면서 알을 낳을 어미가 크게 줄었다.' }, id: 'fh8', title: '0톤', text: '동해에서 명태가 더 이상 잡히지 않는다는 이야기가 들린다.',
       sci: '2008년 동해 명태 공식 어획량은 0톤이 되었다. 동해는 최근 50여 년 동안 표층 수온이 약 1.4°C 올라 우리나라 바다 중 상승 폭이 가장 컸다.',
       c: [ { l: '깊고 찬 곳에 숨는다', e: { energy: -8, hab: 3 }, t: '깊은 찬물이 남아 있었다.' },
            { l: '흩어져 버틴다', e: { pop: -6 }, t: '무리가 더 작아졌다.' } ] },
@@ -382,7 +382,7 @@ const HISTORY = {
 };
 // 2020년대(현재) 사건
 const NOW = {
-  bear: { id: 'b10', title: '네 배 빠른 북극', text: '북극이 지구 평균보다 훨씬 빠르게 따뜻해진다는 연구가 발표되었다.',
+  bear: { chain: { flag: 'north', e: { hab: 4 }, t: '1990년대에 미리 북쪽으로 옮겨 둔 덕분에 마지막 얼음 지역이 가까웠다.' }, id: 'b10', title: '네 배 빠른 북극', text: '북극이 지구 평균보다 훨씬 빠르게 따뜻해진다는 연구가 발표되었다.',
     sci: '1979년 이후 북극은 지구 평균보다 약 4배 빠르게 따뜻해졌다는 연구가 있다. 얼음이 녹으면 어두운 바다가 햇빛을 더 흡수하는 알베도 되먹임이 큰 원인이다.',
     c: [ { l: '마지막 얼음 지역 쪽으로 미리 옮긴다', e: { energy: -12, hab: 6 }, t: '두꺼운 얼음 가까이 자리를 잡았다.' },
          { l: '지금 사냥터에서 지방을 비축한다', e: { energy: 8, hab: -3 }, t: '지방은 쌓였지만 얼음은 더 줄었다.' } ] },
@@ -507,7 +507,7 @@ QUIZ.push(
 // ---- 시드 난수 ----
 function hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function rng(seed) { let a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-const TUNE = { f0: 10, f1: 0.30, up: 42, e0: 45, h0: 55, hb: 60, hd: 4 };
+const TUNE = { f0: 10, f1: 0.30, up: 43, e0: 45, h0: 55, hb: 60, hd: 4, sk: 0.06, rp: 8, re: 30, rh: 40 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function shuffle(arr, r) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -576,6 +576,10 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
     eff = good ? ch.r.good.e : ch.r.bad.e; text = good ? ch.r.good.t : ch.r.bad.t;
   }
   addE(st, eff, shield);
+  if (ch.set) st.flags[ch.set] = true;
+  // 연쇄 사건: 앞 세대에서 고른 선택이 돌아온다
+  let chainT = null;
+  if (ev.chain && st.flags[ev.chain.flag]) { addE(st, ev.chain.e, shield); chainT = ev.chain.t; }
   const notes = [];
   for (const t of roles) {
     if (t === 'energy') addE(st, { energy: 15 });
@@ -601,7 +605,7 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
   let dp = clamp(Math.round((st.energy - TUNE.e0) / 5 + (st.health - TUNE.h0) / 8 + (hab - TUNE.hb) / TUNE.hd), -25, 6);
   if (dp < 0) dp = Math.round(dp * shield);
   st.pop = clamp(st.pop + dp, 0, 100);
-  return { state: st, T, ppm, hab, text, eff, roll, notes, natural: { food: Math.round(food - TUNE.up), dh: Math.round(dh), dp }, before: cloneState(st0) };
+  return { state: st, T, ppm, hab, text, eff, roll, notes, chain: chainT, chainE: chainT ? ev.chain.e : null, natural: { food: Math.round(food - TUNE.up), dh: Math.round(dh), dp }, before: cloneState(st0) };
 }
 
 // ---- 한 모둠의 기록(run) ----
@@ -635,16 +639,27 @@ function applyPrep(run, res) {
 function resolveRun(run, choiceIdx, opts) {
   opts = opts || {};
   const res = stepGen(run.animal, run.scen, run.code, run.team, run.gen, run, choiceIdx, opts);
-  Object.assign(run, { pop: res.state.pop, energy: res.state.energy, health: res.state.health, habMod: res.state.habMod, foodMod: res.state.foodMod, tAdd: res.state.tAdd });
+  Object.assign(run, { pop: res.state.pop, energy: res.state.energy, health: res.state.health, habMod: res.state.habMod, foodMod: res.state.foodMod, tAdd: res.state.tAdd, flags: res.state.flags });
   run.recs[run.gen] = { c: choiceIdx, roles: opts.roles || [], sur: opts.surprises || [] };
-  run.last = { gen: run.gen, idx: choiceIdx, text: res.text, eff: res.eff, roll: res.roll, natural: res.natural, T: res.T, ppm: res.ppm, hab: res.hab, notes: res.notes, roles: opts.roles || [], roleNames: opts.roleNames || [], before: { pop: res.before.pop, energy: res.before.energy, health: res.before.health } };
+  run.last = { gen: run.gen, idx: choiceIdx, text: res.text, eff: res.eff, roll: res.roll, chain: res.chain, chainE: res.chainE, natural: res.natural, T: res.T, ppm: res.ppm, hab: res.hab, notes: res.notes, roles: opts.roles || [], roleNames: opts.roleNames || [], before: { pop: res.before.pop, energy: res.before.energy, health: res.before.health } };
   run.log.push({ gen: run.gen, id: run.order[run.gen], idx: choiceIdx, text: res.text, pop: run.pop });
   run.sub = 'outcome';
-  if (run.pop <= 0) run.extinctAt = run.gen;
+  if (run.pop <= 0) {
+    // 수업 모드: 처음 쓰러지면 한 번 '긴급 구조 미션' 기회
+    if (opts.rescue && !run.rescueUsed) run.rescue = run.gen; else run.extinctAt = run.gen;
+  }
   return res;
 }
 // 혼자 하기(한 기기)용
 function choose(run, idx) { if (run.phase !== 'play' || run.sub !== 'event') return null; return resolveRun(run, idx); }
+// 긴급 구조 미션 문제: 이 판의 과학 무전에 안 나온 문제 중에서, 보기 순서도 섞는다
+function rescueQuizFor(run) {
+  const used = new Set(run.quiz), pool = QUIZ.map((_, i) => i).filter(i => !used.has(i));
+  const list = pool.length ? pool : QUIZ.map((_, i) => i);
+  const qi = list[hashStr('rq|' + run.code + '|' + run.team + '|' + run.gen) % list.length], Q = QUIZ[qi];
+  const ord = shuffle(Q.a.map((_, i) => i), rng(hashStr('rqo|' + run.code + '|' + qi)));
+  return { q: Q.q, a: ord.map(i => Q.a[i]), c: ord.indexOf(Q.c), e: Q.e };
+}
 function hasQuiz(run) { return QUIZ_GENS.includes(run.gen); }
 // 보기 순서를 수업 코드·문항마다 섞는다(같은 수업이면 모든 모둠·전자칠판이 같은 순서). c는 섞은 뒤 정답 위치
 function quizFor(run) {
@@ -653,10 +668,71 @@ function quizFor(run) {
   const ord = shuffle(Q.a.map((_, i) => i), rng(hashStr('qopt|' + run.code + '|' + qi)));
   return { q: Q.q, a: ord.map(i => Q.a[i]), c: ord.indexOf(Q.c), e: Q.e };
 }
+// ok: 참/거짓 또는 0~1(모둠원 정답 비율) — 비율만큼 보급품
+function quizGain(f) { return { energy: Math.round(12 * f), health: Math.round(5 * f) }; }
 function applyQuiz(run, ok) {
-  run.quizAns[run.gen] = { ok };
-  if (run.recs[run.gen]) run.recs[run.gen].q = ok ? 1 : 0;
-  if (ok) { run.energy = clamp(run.energy + 12, 0, 100); run.health = clamp(run.health + 5, 0, 100); }
+  const f = typeof ok === 'number' ? clamp(ok, 0, 1) : (ok ? 1 : 0);
+  run.quizAns[run.gen] = { ok: f >= 0.5, f };
+  if (run.recs[run.gen]) run.recs[run.gen].q = f;
+  const g = quizGain(f);
+  run.energy = clamp(run.energy + g.energy, 0, 100); run.health = clamp(run.health + g.health, 0, 100);
+}
+
+// ---- 수업 모드 규칙: 기후 정상 회의 · 지원 · 긴급 구조 · 중간 미니게임 ----
+// 정상 회의는 이 세대 결과 뒤에 열리고, 다음 세대부터 모든 모둠의 기온에 반영된다(역사 구간은 바꾸지 않는다)
+const SUMMIT_GENS = [10, 13, 16];
+const PLEDGES = [
+  { name: '지금처럼', desc: '감축 없음', cost: 0, w: 0 },
+  { name: '감축', desc: '에너지 −8', cost: 8, w: 1 },
+  { name: '대폭 감축', desc: '에너지 −16', cost: 16, w: 2 },
+];
+// 반 평균 약속(0~2) 1당 앞으로의 기온 −TUNE.sk°C
+function summitDT(avgW) { return -Math.round(TUNE.sk * clamp(avgW, 0, 2) * 100) / 100; }
+function recOf(run) { return run.recs[run.gen] || (run.recs[run.gen] = { c: 0, roles: [], sur: [] }); }
+function applySummit(run, pledge, dT) {
+  const P = PLEDGES[pledge] || PLEDGES[0];
+  run.energy = clamp(run.energy - P.cost, 0, 100);
+  run.tAdd = Math.round(((run.tAdd || 0) + dT) * 100) / 100;
+  recOf(run).sm = { c: P.cost, dT };
+}
+// 다른 모둠에 먹이 보내기: 보내는 쪽 −4, 받는 쪽 +5(에너지) · +2(건강)
+const AID = { cost: 4, gain: 5, health: 2, perStudent: 2 };
+function applyAid(run, de, dh) {
+  run.energy = clamp(run.energy + de, 0, 100); run.health = clamp(run.health + (dh || 0), 0, 100);
+  const r = recOf(run); r.aid = { e: ((r.aid && r.aid.e) || 0) + de, h: ((r.aid && r.aid.h) || 0) + (dh || 0) };
+}
+function applyRescue(run, ok) {
+  run.rescueUsed = true; run.rescue = null;
+  recOf(run).rs = ok ? 1 : 0;
+  if (ok) { run.rescueOk = true; run.pop = TUNE.rp; run.energy = Math.max(run.energy, TUNE.re); run.health = Math.max(run.health, TUNE.rh); }
+  else run.extinctAt = run.gen;
+}
+// 중간 미니게임(30초): 2010년대 결과 뒤
+const MID_GEN = 9;
+function midGain(res) { return { energy: Math.min(20, res.food * 2), pop: Math.min(8, res.special * 4), health: -Math.min(20, Math.round(res.damage / 2)) }; }
+function applyMidGame(run, res) {
+  const g = midGain(res);
+  run.energy = clamp(run.energy + g.energy, 0, 100); run.pop = clamp(run.pop + g.pop, 0, 100); run.health = clamp(run.health + g.health, 0, 100);
+  recOf(run).mg = g;
+  return g;
+}
+// 공정한 순위: 버틴 세대와 남은 개체 수 → 같은 동물·같은 세계의 '보통 모둠' 점수와 비교
+function runScore(survived, pop) { return survived * 10 + (survived >= GENS ? pop : 0); }
+const _base = {};
+function baselineScore(animal, scen) {
+  const k = animal + scen; if (_base[k] != null) return _base[k];
+  let tot = 0; const N = 40;
+  for (let i = 0; i < N; i++) {
+    const r = rng(hashStr('base|' + k + '|' + i)), run = newRun('B' + i, 'B', animal, scen);
+    applyPrep(run, { food: 8, special: 1, damage: 15 });
+    while (run.phase === 'play') {
+      if (run.sub === 'event') { const ev = findEvent(animal, run.order[run.gen]); resolveRun(run, Math.floor(r() * ev.c.length)); }
+      else if (run.sub === 'quiz') { applyQuiz(run, 0.7); run.sub = 'quizdone'; }
+      advance(run);
+    }
+    tot += runScore(gensSurvived(run), run.pop);
+  }
+  return (_base[k] = Math.round(tot / N));
 }
 function answerQuiz(run, ai) {
   const Q = quizFor(run), ok = ai === Q.c;
@@ -679,12 +755,16 @@ function currentT(run) { return genClimate(run.scen, Math.min(run.gen, GENS - 1)
 // 같은 선택·능력·기습 이벤트로 배출 경로만 바꿔 다시 계산
 function replay(run, scenKey) {
   let st = { pop: run.init.pop, energy: run.init.energy, health: run.init.health, habMod: 0, foodMod: 0, tAdd: 0, flags: { ...run.init.flags } };
-  const popHist = []; let survived = 0;
+  const popHist = []; let survived = 0, usedRescue = false;
   for (let g = 0; g < GENS; g++) {
     const rec = run.recs[g] || { c: 0, roles: [], sur: [] };
     const res = stepGen(run.animal, scenKey, run.code, run.team, g, st, rec.c, { roles: rec.roles, surprises: rec.sur });
     st = res.state;
-    if (rec.q) { st.energy = clamp(st.energy + 12, 0, 100); st.health = clamp(st.health + 5, 0, 100); }
+    if (rec.aid) { st.energy = clamp(st.energy + rec.aid.e, 0, 100); st.health = clamp(st.health + (rec.aid.h || 0), 0, 100); }
+    if (st.pop <= 0 && run.rescueOk && !usedRescue) { usedRescue = true; st.pop = TUNE.rp; st.energy = Math.max(st.energy, TUNE.re); st.health = Math.max(st.health, TUNE.rh); }
+    if (rec.q) { const g = quizGain(rec.q === true ? 1 : rec.q); st.energy = clamp(st.energy + g.energy, 0, 100); st.health = clamp(st.health + g.health, 0, 100); }
+    if (rec.sm) { st.energy = clamp(st.energy - rec.sm.c, 0, 100); st.tAdd = Math.round(((st.tAdd || 0) + rec.sm.dT) * 100) / 100; }
+    if (rec.mg) { st.energy = clamp(st.energy + rec.mg.energy, 0, 100); st.pop = clamp(st.pop + rec.mg.pop, 0, 100); st.health = clamp(st.health + rec.mg.health, 0, 100); }
     popHist.push(st.pop);
     if (st.pop <= 0) break;
     survived = g + 1;
@@ -726,6 +806,7 @@ function parseCode(str, team) {
 
 if (typeof module !== 'undefined') module.exports = {
   TUNE, GENS, HIST_GENS, CUSTOM_THEMES, sanitizeCustom, surpriseDef, DECADES, SCENARIOS, SCEN_ORDER, ANIMALS, ANIMAL_ORDER, QUIZ, QUIZ_GENS, HISTORY, NOW, ROLES, ROLE_USES, SURPRISES, SURPRISE_ORDER,
-  eventOrder, findEvent, allEvents, newRun, prepToState, mergePrep, applyPrep, resolveRun, choose, hasQuiz, quizFor, applyQuiz, answerQuiz, advance,
+  eventOrder, findEvent, allEvents, newRun, prepToState, mergePrep, applyPrep, resolveRun, choose, hasQuiz, quizFor, rescueQuizFor, applyQuiz, answerQuiz, advance,
+  SUMMIT_GENS, PLEDGES, summitDT, applySummit, AID, applyAid, applyRescue, MID_GEN, midGain, applyMidGame, runScore, baselineScore, quizGain,
   currentHab, currentT, replay, resultCode, parseCode, gensSurvived, baseHab, stepGen, genClimate, tally, assignRoles, roleOf, abilityDesc, hashStr, rng, clamp,
 };

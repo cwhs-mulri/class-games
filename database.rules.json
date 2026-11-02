@@ -65,6 +65,52 @@
             ".write": "auth != null && auth.uid == $uid",
             ".validate": "newData.child('food').isNumber() && newData.child('food').val() >= 0 && newData.child('food').val() <= 60 && newData.child('special').isNumber() && newData.child('special').val() >= 0 && newData.child('special').val() <= 5 && newData.child('damage').isNumber() && newData.child('damage').val() >= 0 && newData.child('damage').val() <= 300 && newData.child('g').isString()"
           }
+        },
+        "pred": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('pr').isNumber() && (newData.child('pr').val() == 1 || newData.child('pr').val() == -1) && newData.child('g').isString()"
+            }
+          }
+        },
+        "aid": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('to').isString() && newData.child('to').val().length <= 4 && newData.child('g').isString()"
+            }
+          }
+        },
+        "rescue": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('a').isNumber() && newData.child('a').val() >= 0 && newData.child('a').val() <= 3 && newData.child('g').isString()"
+            }
+          }
+        },
+        "summit": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$gen": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid",
+              ".validate": "newData.child('p').isNumber() && newData.child('p').val() >= 0 && newData.child('p').val() <= 2 && newData.child('g').isString()"
+            }
+          }
+        },
+        "prep2": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid",
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid",
+            ".validate": "newData.child('food').isNumber() && newData.child('food').val() >= 0 && newData.child('food').val() <= 60 && newData.child('special').isNumber() && newData.child('special').val() >= 0 && newData.child('special').val() <= 5 && newData.child('damage').isNumber() && newData.child('damage').val() >= 0 && newData.child('damage').val() <= 300 && newData.child('g').isString()"
+          }
+        },
+        "scores": {
+          ".write": "(auth != null && auth.token.email_verified == true && (auth.token.email.toLowerCase() == 'kjm140@gw1.kr' || root.child('teachers').child(auth.token.email.toLowerCase().replace('.', ',')).exists())) && root.child('rooms').child($code).child('meta').child('owner').val() == auth.uid"
         }
       }
     }

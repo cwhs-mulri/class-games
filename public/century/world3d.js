@@ -635,7 +635,9 @@ const World3D = (function () {
   // ---------- 60초 아레나 ----------
   let A = {};
   const BOUND = { x: 24, z: 15 };
-  function startArena(key, cbs) {
+  // opts: { dur: 초, hard: 이미 따뜻해진 바다(얼음이 작고 따뜻한 물이 넓게 시작) }
+  function startArena(key, cbs, opts) {
+    opts = opts || {};
     if (!init()) { cbs.onEnd({ food: 8, special: 1, damage: 15, skipped: true }); return; }
     sfxInit();
     buildBiome(key); mode = 'arena';
@@ -644,12 +646,12 @@ const World3D = (function () {
     arenaGroup = new T.Group(); root.add(arenaGroup);
     popGroup.clear && popGroup.clear(); B.pops = [];
     const r = srand(Date.now() & 0xffff);
-    A = { key, r, cbs, t: 0, pre: RM ? 0.6 : 3.4, dur: 60, food: 0, special: 0, damage: 0, inv: 0, keys: {}, target: null, pointer: false, items: [], hazards: [], bursts: [], status: '', ended: false, shake: 0, lastSec: 61, lastCount: 4 };
+    A = { key, r, cbs, t: 0, pre: RM ? 0.6 : 3.4, dur: opts.dur || 60, hard: !!opts.hard, food: 0, special: 0, damage: 0, inv: 0, keys: {}, target: null, pointer: false, items: [], hazards: [], bursts: [], status: '', ended: false, shake: 0, lastSec: 61, lastCount: 4 };
     let pm;
     if (key === 'bear') { pm = bearModel(); pm.scale.setScalar(1.15); const f = B.floes[Math.floor(B.floes.length / 2)]; A.pos = new T.Vector3(f.x, 0, f.z); }
-    else if (key === 'penguin') { pm = penguinModel(); pm.scale.setScalar(1.2); A.pos = new T.Vector3(0, 0, -15); setSlab(13); }
+    else if (key === 'penguin') { pm = penguinModel(); pm.scale.setScalar(1.2); A.pos = new T.Vector3(0, 0, -15); setSlab(A.hard ? 10 : 13); }
     else if (key === 'coral') { pm = larvaModel(); pm.scale.setScalar(1.1); A.pos = new T.Vector3(0, 0, 8); }
-    else { pm = pollockModel(); pm.scale.setScalar(1.25); A.pos = new T.Vector3(0, 0, -6); setEdge(16); }
+    else { pm = pollockModel(); pm.scale.setScalar(1.25); A.pos = new T.Vector3(0, 0, -6); setEdge(A.hard ? 6 : 16); }
     A.player = pm; arenaGroup.add(pm);
     // 내 위치 표시 고리
     A.ring = new T.Mesh(geo('ringG', () => new T.RingGeometry(1.5, 1.85, 32)), new T.MeshBasicMaterial({ color: 0xFFD166, transparent: true, opacity: 0.85, depthWrite: false })); A.ring.rotation.x = -Math.PI / 2; A.ring.renderOrder = 4; arenaGroup.add(A.ring);
@@ -713,9 +715,10 @@ const World3D = (function () {
       return;
     }
     A.t += realDt; const prog = Math.min(1, A.t / A.dur), key = A.key;
-    if (key === 'bear') B.floes.forEach(f => { f.k = 1 - 0.5 * prog; f.mesh.scale.set(f.k, 1, f.k); });
-    if (key === 'penguin') setSlab(13 - 6 * prog);
-    if (key === 'pollock') setEdge(16 - 19 * prog);
+    const k0 = A.hard ? 0.75 : 1;
+    if (key === 'bear') B.floes.forEach(f => { f.k = k0 - 0.5 * k0 * prog; f.mesh.scale.set(f.k, 1, f.k); });
+    if (key === 'penguin') setSlab(A.hard ? 10 - 4 * prog : 13 - 6 * prog);
+    if (key === 'pollock') setEdge(A.hard ? 6 - 12 * prog : 16 - 19 * prog);
     let vx = 0, vz = 0;
     const k = A.keys;
     if (k.arrowleft || k.a) vx -= 1; if (k.arrowright || k.d) vx += 1; if (k.arrowup || k.w) vz -= 1; if (k.arrowdown || k.s) vz += 1;
@@ -772,7 +775,7 @@ const World3D = (function () {
         h.g.position.set(h.x, -0.05, h.z); h.g.rotation.y = Math.atan2(-dz, dx);
         if (d < 1.8 && A.inv <= 0) hit(12, '표범물범에게 물렸어요!');
       } else if (h.kind === 'heat') {
-        const rr = h.r0 + prog * 5.5; h.g.scale.set(rr, rr, 1); h.g.material.opacity = 0.26 + Math.sin(clock * 4) * 0.06;
+        const rr = h.r0 + (A.hard ? 1.5 : 0) + prog * 5.5; h.g.scale.set(rr, rr, 1); h.g.material.opacity = 0.26 + Math.sin(clock * 4) * 0.06;
       } else if (h.kind === 'star') {
         const dx = A.pos.x - h.x, dz = A.pos.z - h.z, d = Math.hypot(dx, dz) || 1;
         h.x += dx / d * 2.4 * dt; h.z += dz / d * 2.4 * dt; h.g.position.set(h.x, 0, h.z); h.g.rotation.y += dt;

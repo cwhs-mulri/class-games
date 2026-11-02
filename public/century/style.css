@@ -292,7 +292,7 @@ select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(-
 .lv-meter i{display:block;height:100%;border-radius:9px}
 
 /* 전자칠판 */
-body.boardmode{padding:0}
+body.boardmode{padding:0;margin:0;overflow:hidden}
 .lv-board{position:relative;min-height:100vh;padding:14px 18px;display:flex;flex-direction:column}
 .lv-gl{position:fixed;inset:0;pointer-events:none;z-index:1}
 .lv-gl canvas{width:100%;height:100%;display:block}
@@ -523,3 +523,66 @@ body.boardmode{padding:0}
 .lv-confetti i{position:absolute;top:-24px;left:var(--x);width:8px;height:14px;border-radius:2px;background:var(--c);animation:lvconf 3.4s var(--d) ease-in forwards}
 @keyframes lvconf{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(112vh) rotate(760deg)}}
 @media (prefers-reduced-motion:reduce){.lv-decade,.lv-dbub,.lv-extov,.lv-confetti{display:none}.lv-card.just-ext .lv-view,.lv-card.just-ext .lv-stamp{animation:none}.lv-meter i{transition:none}}
+
+/* ===== 새 활동: 예측 · 지원 · 구조 · 정상 회의 · 순위 ===== */
+.lv-myscore{display:inline-block;margin-left:4px;padding:1px 8px;border-radius:99px;background:rgba(255,209,102,.15);color:#FFD166;font-size:12px;font-weight:700;vertical-align:middle}
+.lv-pred p{margin:4px 0 8px}
+.lv-prbtns,.lv-aidbtns,.lv-pledges{display:grid;gap:8px}
+.lv-prbtns{grid-template-columns:1fr 1fr}
+.lv-prbtns button,.lv-aidbtns button,.lv-pledges button{border:2px solid var(--line);background:var(--panel2);border-radius:12px;padding:11px 10px;text-align:left;display:flex;flex-direction:column;gap:3px;min-width:0}
+.lv-prbtns button{align-items:center;font-weight:700}
+.lv-prbtns button.on,.lv-pledges button.on{border-color:var(--ice);background:rgba(127,211,255,.12)}
+.lv-aidbtns button{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:4px 6px}
+.lv-aidbtns button.on{border-color:var(--good);background:rgba(74,222,128,.12)}
+.lv-aidbtns button:disabled{opacity:.5}
+.lv-pledges small{color:var(--muted);font-size:12px}
+.lv-sos{border-color:#FB7185;background:rgba(251,113,133,.1);font-size:14px}
+.lv-chain{margin:8px 0 0;padding:8px 10px;border-left:3px solid #C4A0FF;background:rgba(196,160,255,.08);border-radius:8px;font-size:14px}
+.lv-aidin{margin:6px 0 0;color:var(--good);font-size:14px}
+.lv-prres{margin:6px 0 0;font-size:14px;font-weight:700}.lv-prres.up{color:var(--good)}.lv-prres.down{color:var(--bad)}
+.lv-rescue{border-color:#FB7185}
+.lv-rescue.ok{border-color:var(--good);background:rgba(74,222,128,.08)}
+.lv-rescue.fail{background:rgba(251,113,133,.08)}
+.lv-summit{border-color:#4ADE80}
+.lv-pledgegrid{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.lv-myend .lv-awards{margin-top:8px}
+.lv-sosb{font-size:12px;font-weight:700;color:#fff;background:#E11D48;border-radius:99px;padding:1px 8px;animation:lvsos 1.2s ease-in-out infinite}
+@keyframes lvsos{50%{opacity:.55}}
+.lv-stamp.warn{color:#FFD166;font-size:32px;background:rgba(40,20,10,.45)}
+.lv-status .chainc{color:#C4A0FF;font-weight:700}
+.lv-sband{border-color:#2F7D4F;background:#11281D}
+.lv-rband{border-color:#7F1D2D;background:#2A1116}
+.lv-qband p{margin:4px 0 0;font-size:16px}
+.lv-qband .chip{font-size:13px}
+.lv-meter.big{display:block;height:14px;margin:8px 0;border-radius:99px}
+.lv-endcols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.6fr);gap:18px}
+.lv-endcols h2{font-size:22px}
+.lv-endcols .lv-endgrid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.lv-rank{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px}
+.lv-rank li{display:grid;grid-template-columns:28px minmax(0,1fr) auto auto;gap:8px;align-items:baseline;padding:6px 8px;border-radius:10px;background:var(--panel2);font-size:15px}
+.lv-rank li.top{background:rgba(255,209,102,.14);outline:1px solid rgba(255,209,102,.5)}
+.lv-rank li > b{font-family:var(--mono);color:#FFD166}
+.lv-rank .up{color:var(--good);font-weight:700}.lv-rank .down{color:var(--bad);font-weight:700}
+.lv-awards{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.lv-awards li{display:flex;gap:10px;align-items:center;background:var(--panel2);border-radius:10px;padding:7px 10px}
+.lv-awards li > span{font-size:22px}
+.lv-awards b{display:block;font-size:14px}.lv-awards small{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+
+/* ===== 전자칠판: 화면 높이에 맞춰 전부 보이게 ===== */
+body.boardmode .lv-board{height:100vh;height:100dvh;min-height:0;overflow:hidden;padding:clamp(6px,1.2vh,14px) clamp(8px,1.2vw,18px)}
+body.boardmode #bUI{min-height:0;gap:clamp(6px,1vh,12px)}
+body.boardmode .lv-grid{flex:1 1 0;min-height:0;grid-auto-rows:minmax(0,1fr);gap:clamp(6px,1vh,12px)}
+body.boardmode .lv-card{min-height:0;overflow:hidden;padding:clamp(6px,.9vh,10px);gap:clamp(3px,.6vh,6px)}
+body.boardmode .lv-view{flex:1 1 0;min-height:40px}
+body.boardmode .lv-btitle h1{font-size:clamp(22px,3.4vh,34px)}
+body.boardmode .lv-bhead{gap:clamp(8px,1.2vw,18px)}
+body.boardmode .lv-lobby{flex:0 1 auto;min-height:0}
+body.boardmode .lv-lobby img{width:clamp(120px,22vh,220px);height:auto}
+body.boardmode .lv-qband{flex:none;padding:clamp(8px,1.2vh,14px) 18px}
+body.boardmode .lv-qband h2{font-size:clamp(17px,2.6vh,24px)}
+body.boardmode .lv-board.isend .lv-grid{flex:0 0 32%}
+body.boardmode .lv-endband{flex:1 1 0;min-height:0;overflow:auto}
+.lv-full{border:1px solid var(--line);background:var(--panel2);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px}
+@media (max-height:820px){body.boardmode .lv-members{display:none}body.boardmode .lv-card header b{font-size:18px}body.boardmode .lv-status,body.boardmode .lv-status b{font-size:13px}}
+@media (max-height:640px){body.boardmode .lv-stats{display:none}}
+@media (max-width:1100px){.lv-endcols{grid-template-columns:1fr}}
