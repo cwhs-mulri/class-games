@@ -137,3 +137,19 @@ test('직접 만든 재난: 값은 범위 안으로, 모든 동물에 같은 효
   assert.equal(b.last.notes[0].name, '폭설');
   assert.equal(E.replay(b, 'mid').pop, E.replay(JSON.parse(JSON.stringify(b)), 'mid').pop);
 });
+
+test('과학 무전: 정답 위치가 한쪽에 몰리지 않고, 같은 수업 코드면 순서가 같다', () => {
+  const pos = [0, 0, 0, 0];
+  for (let k = 0; k < 40; k++) {
+    const run = E.newRun('C' + k, 'A', 'bear', 'mid');
+    for (const g of E.QUIZ_GENS) {
+      run.gen = g; const Q = E.quizFor(run), raw = E.QUIZ[run.quiz[E.QUIZ_GENS.indexOf(g)]];
+      assert.equal(Q.a[Q.c], raw.a[raw.c]); assert.equal(new Set(Q.a).size, raw.a.length);
+      pos[Q.c]++;
+    }
+  }
+  for (const n of pos) assert.ok(n > 400 * 0.15, '정답 위치 분포 ' + pos);
+  const a = E.newRun('7777', 'A', 'bear', 'mid'), b = E.newRun('7777', 'B', 'coral', 'high');
+  a.gen = b.gen = E.QUIZ_GENS[0];
+  assert.deepEqual(E.quizFor(a).a, E.quizFor(b).a);
+});

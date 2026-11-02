@@ -646,7 +646,13 @@ function resolveRun(run, choiceIdx, opts) {
 // 혼자 하기(한 기기)용
 function choose(run, idx) { if (run.phase !== 'play' || run.sub !== 'event') return null; return resolveRun(run, idx); }
 function hasQuiz(run) { return QUIZ_GENS.includes(run.gen); }
-function quizFor(run) { return QUIZ[run.quiz[QUIZ_GENS.indexOf(run.gen)]]; }
+// 보기 순서를 수업 코드·문항마다 섞는다(같은 수업이면 모든 모둠·전자칠판이 같은 순서). c는 섞은 뒤 정답 위치
+function quizFor(run) {
+  const qi = run.quiz[QUIZ_GENS.indexOf(run.gen)], Q = QUIZ[qi];
+  if (!Q) return Q;
+  const ord = shuffle(Q.a.map((_, i) => i), rng(hashStr('qopt|' + run.code + '|' + qi)));
+  return { q: Q.q, a: ord.map(i => Q.a[i]), c: ord.indexOf(Q.c), e: Q.e };
+}
 function applyQuiz(run, ok) {
   run.quizAns[run.gen] = { ok };
   if (run.recs[run.gen]) run.recs[run.gen].q = ok ? 1 : 0;
