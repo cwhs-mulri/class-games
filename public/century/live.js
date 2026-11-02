@@ -591,7 +591,10 @@ const LIVE = (function () {
     cur.setup = saved;
     const animals = saved.animals || Array.from({ length: 8 }, (_, i) => ANIMAL_ORDER[i % 4]);
     saved.animals = animals;
-    const scens = Array.from({ length: 8 }, (_, i) => saved.mix ? SCEN_ORDER[i % 3] : saved.scen);
+    // 모둠마다 배출 경로(난이도)를 따로 고른다. 위의 단추는 한꺼번에 채우기
+    if (!saved.scens) saved.scens = Array.from({ length: 8 }, (_, i) => saved.mix ? SCEN_ORDER[i % 3] : saved.scen);
+    const scens = saved.scens, used = scens.slice(0, saved.n);
+    const allIs = k => used.every(x => x === k), isMix = used.every((x, i) => x === SCEN_ORDER[i % 3]);
     const total = Math.round((GENS * ((+saved.voteSec) + (+saved.outSec)) + QUIZ_GENS.length * ((+saved.quizSec) + DEF.qresSec) + DEF.prepSec + SUMMIT_GENS.length * (DEF.summitSec + DEF.sresSec) + DEF.midSec) / 60);
     root.innerHTML = `<div class="wrap">${top}
       <section class="card lv-setup"><h2>새 수업 만들기</h2>
@@ -601,16 +604,16 @@ const LIVE = (function () {
           <div><label for="sO">결과 보기(초)</label><input type="text" id="sO" value="${saved.outSec}" inputmode="numeric"></div>
           <div><label for="sQ">퀴즈(초)</label><input type="text" id="sQ" value="${saved.quizSec}" inputmode="numeric"></div>
           <div><label for="sM">모둠 최대 인원</label><select id="sM">${[0, 3, 4, 5, 6].map(n => `<option value="${n}" ${(saved.maxPer ?? 5) === n ? 'selected' : ''}>${n ? n + '명' : '제한 없음'}</option>`).join('')}</select></div></div>
-        <div class="lv-row"><div><label>배출 시나리오</label><div class="lv-seg">${SCEN_ORDER.map(k => `<button data-sc="${k}" aria-pressed="${!saved.mix && saved.scen === k}" style="--sc:${SCOL[k]}">${SCENARIOS[k].name}</button>`).join('')}<button data-sc="mix" aria-pressed="${saved.mix}">모둠마다 다르게</button></div></div></div>
-        <div class="lv-groups">${Array.from({ length: saved.n }, (_, i) => `<div class="lv-g"><b>${i + 1}모둠</b><select id="sA${i}" aria-label="${i + 1}모둠 동물">${ANIMAL_ORDER.map(a => `<option value="${a}" ${animals[i] === a ? 'selected' : ''}>${ANIMALS[a].name}</option>`).join('')}</select><span class="chip" style="color:${SCOL[scens[i]]}">${SCENARIOS[scens[i]].name}</span></div>`).join('')}</div>
+        <div class="lv-row"><div><label>배출 시나리오</label><div class="lv-seg">${SCEN_ORDER.map(k => `<button data-sc="${k}" aria-pressed="${allIs(k)}" style="--sc:${SCOL[k]}">모두 ${SCENARIOS[k].name}</button>`).join('')}<button data-sc="mix" aria-pressed="${isMix && !SCEN_ORDER.some(allIs)}">돌아가며 섞기</button></div><small class="muted">아래에서 모둠마다 따로 고를 수 있어요 · 저배출 쉬움 · 중간 배출 보통 · 고배출 어려움</small></div></div>
+        <div class="lv-groups">${Array.from({ length: saved.n }, (_, i) => `<div class="lv-g"><b>${i + 1}모둠</b><select id="sA${i}" aria-label="${i + 1}모둠 동물">${ANIMAL_ORDER.map(a => `<option value="${a}" ${animals[i] === a ? 'selected' : ''}>${ANIMALS[a].name}</option>`).join('')}</select><select id="sS${i}" class="lv-scsel" aria-label="${i + 1}모둠 난이도(배출 경로)" style="color:${SCOL[scens[i]]}">${SCEN_ORDER.map(k => `<option value="${k}" ${scens[i] === k ? 'selected' : ''}>${SCENARIOS[k].name}</option>`).join('')}</select></div>`).join('')}</div>
         <p class="muted">예상 진행 시간 약 <b>${total}분</b> (20세대 · 과학 무전 10회 · 기후 정상 회의 3회 · 60초 준비 · 30초 미니게임 포함, 긴급 구조가 생기면 30초씩 늘고 모두 투표하면 빨라져요)</p>
         <button class="btn hot lg" id="sGo">수업 만들기</button>
       </section>
       <section class="card"><h3>이전 수업 이어서 열기</h3><div class="lv-row"><input type="text" id="sOld" placeholder="수업 코드" style="max-width:160px"><button class="btn" id="sOpen">열기</button></div><p class="muted">내가 만든 수업만 열 수 있어요.</p></section>
       ${NET.isAdmin() ? adminHTML() : ''}</div>`;
-    const read = () => { saved.code = $('#sCode').value.trim() || saved.code; saved.n = Math.max(2, Math.min(8, +$('#sN').value || 6)); saved.voteSec = Math.max(15, +$('#sV').value || 40); saved.outSec = Math.max(5, +$('#sO').value || 10); saved.quizSec = Math.max(10, +$('#sQ').value || 25); saved.maxPer = +$('#sM').value; for (let i = 0; i < 8; i++) { const s = document.getElementById('sA' + i); if (s) animals[i] = s.value; } };
+    const read = () => { saved.code = $('#sCode').value.trim() || saved.code; saved.n = Math.max(2, Math.min(8, +$('#sN').value || 6)); saved.voteSec = Math.max(15, +$('#sV').value || 40); saved.outSec = Math.max(5, +$('#sO').value || 10); saved.quizSec = Math.max(10, +$('#sQ').value || 25); saved.maxPer = +$('#sM').value; for (let i = 0; i < 8; i++) { const s = document.getElementById('sA' + i); if (s) animals[i] = s.value; const c = document.getElementById('sS' + i); if (c) scens[i] = c.value; } };
     root.querySelectorAll('.lv-setup input,.lv-setup select').forEach(el => el.onchange = () => { read(); setTimeout(renderTeacher, 0); });
-    root.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { read(); if (b.dataset.sc === 'mix') saved.mix = true; else { saved.mix = false; saved.scen = b.dataset.sc; } renderTeacher(); });
+    root.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => { read(); for (let i = 0; i < 8; i++) scens[i] = b.dataset.sc === 'mix' ? SCEN_ORDER[i % 3] : b.dataset.sc; renderTeacher(); });
     $('#sGo').onclick = () => { read(); createRoom({ code: saved.code.replace(/[^0-9A-Za-z_-]/g, ''), maxPer: saved.maxPer ?? 5, voteSec: saved.voteSec, outSec: saved.outSec, quizSec: saved.quizSec, groups: Array.from({ length: saved.n }, (_, i) => ({ name: (i + 1) + '모둠', animal: animals[i], scen: scens[i] })) }); };
     $('#sOpen').onclick = () => { const c = $('#sOld').value.trim(); if (c) openRoom(c); };
     if (NET.isAdmin()) adminBind();
@@ -624,7 +627,10 @@ const LIVE = (function () {
       const g = G(gid), st = groupState(gid), ms = members(gid), roles = rolesOf(gid), run = st.run;
       const box = boxOf(sub, gen), SUBMIT = ['event', 'quiz', 'prep', 'summit', 'rescue', 'prep2'];
       const done = ms.filter(m => box && box[m.uid]).length;
-      return `<tr><td><b>${esc(g.name)}</b><br><small style="color:${SCOL[g.scen]}">${ANIMALS[g.animal].name} · ${SCENARIOS[g.scen].name}</small></td>
+      const scCell = (sub === 'lobby' || sub === 'prep') && !run
+        ? `<br><small>${ANIMALS[g.animal].name}</small> <select data-gscen="${gid}" class="lv-scsel" aria-label="${esc(g.name)} 난이도" style="color:${SCOL[g.scen]}">${SCEN_ORDER.map(k => `<option value="${k}" ${g.scen === k ? 'selected' : ''}>${SCENARIOS[k].name}</option>`).join('')}</select>`
+        : `<br><small style="color:${SCOL[g.scen]}">${ANIMALS[g.animal].name} · ${SCENARIOS[g.scen].name}</small>`;
+      return `<tr><td><b>${esc(g.name)}</b>${scCell}</td>
         <td><div class="lv-mems">${ms.map(m => { const voted = box && box[m.uid]; return `<span class="lv-mem ${SUBMIT.includes(sub) ? (voted ? 'done' : 'wait') : ''}"><b>${esc(m.name)}</b>${roles[m.uid] ? `<small>★${esc((roleOf(g.animal, roles[m.uid]) || {}).name || '')}</small>` : ''}
           <select data-move="${m.uid}" aria-label="${esc(m.name)} 모둠 옮기기">${order().map(o => `<option value="${o}" ${o === gid ? 'selected' : ''}>${esc(G(o).name)}</option>`).join('')}</select>
           ${cur.kickArm === m.uid ? `<button class="lv-kick sure" data-kick="${m.uid}">내보내기 확인</button><button class="lv-kick" data-kickx="1">취소</button>` : `<button class="lv-kick" data-kickarm="${m.uid}" aria-label="${esc(m.name)} 내보내기">✕</button>`}</span>`; }).join('') || '<span class="muted">아직 없음</span>'}</div>
@@ -672,6 +678,7 @@ const LIVE = (function () {
     root.querySelectorAll('[data-sur]').forEach(b => b.onclick = () => fireSurprise(b.dataset.sur, $('#cTarget').value));
     root.querySelectorAll('[data-peek]').forEach(b => b.onclick = e => { e.stopPropagation(); const t = $('#cTarget').value; Splash.show({ key: b.dataset.peek, mode: 'preview', target: targetName(t), effects: splashEffects(b.dataset.peek, t) }); });
     root.querySelectorAll('[data-move]').forEach(sel => sel.onchange = () => movePlayer(sel.dataset.move, sel.value));
+    root.querySelectorAll('[data-gscen]').forEach(sel => sel.onchange = () => { const gid = sel.dataset.gscen; if (runOf(gid)) return; NET.update({ [`${base()}/meta/groups/${gid}/scen`]: sel.value }).then(() => toast(`${G(gid).name} 난이도를 ${SCENARIOS[sel.value].name}(으)로 바꿨어요`, 'good')); });
     root.querySelectorAll('[data-kickarm]').forEach(b => b.onclick = () => { cur.kickArm = b.dataset.kickarm; renderTeacher(); });
     root.querySelectorAll('[data-kickx]').forEach(b => b.onclick = () => { cur.kickArm = null; renderTeacher(); });
     root.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => { cur.kickArm = null; kickPlayer(b.dataset.kick); });

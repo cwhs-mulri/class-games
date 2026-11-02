@@ -265,8 +265,8 @@ select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(-
 .lv-seg{display:flex;gap:6px;flex-wrap:wrap}
 .lv-seg button{border:1.5px solid var(--line);background:var(--panel2);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px}
 .lv-seg button[aria-pressed="true"]{border-color:var(--sc,var(--heat));color:var(--sc,var(--heat))}
-.lv-groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
-.lv-g{display:flex;gap:8px;align-items:center;background:var(--panel2);border-radius:12px;padding:8px 10px}
+.lv-groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.lv-g{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;background:var(--panel2);border-radius:12px;padding:8px 10px}
 .lv-g select{flex:1;min-width:0}
 .lv-head{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
 .lv-codebox{display:flex;gap:14px;align-items:center}
@@ -586,3 +586,8 @@ body.boardmode .lv-endband{flex:1 1 0;min-height:0;overflow:auto}
 @media (max-height:820px){body.boardmode .lv-members{display:none}body.boardmode .lv-card header b{font-size:18px}body.boardmode .lv-status,body.boardmode .lv-status b{font-size:13px}}
 @media (max-height:640px){body.boardmode .lv-stats{display:none}}
 @media (max-width:1100px){.lv-endcols{grid-template-columns:1fr}}
+
+.lv-scsel{font-weight:700;max-width:100%}
+.lv-g .lv-scsel{min-width:0}
+.lv-g > b{flex:0 0 100%}
+.lv-g > select{flex:1 1 0;min-width:0}
