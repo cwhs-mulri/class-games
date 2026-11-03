@@ -228,3 +228,45 @@ body.boardmode{overflow:hidden}
 .bd-mis{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:clamp(14px,1.9vh,18px)}
 .bd-mis span{background:var(--panel2);border-radius:999px;padding:3px 12px}
 .bd-mis em{font-style:normal;color:var(--gold);font-family:var(--mono)}
+/* ---- 휴대폰: 옆으로 넘기는 페이지 ---- */
+.stats{display:flex;gap:8px}
+.ptabs{display:none}
+.swipehint{display:none}
+.evcard{border-color:var(--pink)}
+.pg-park{display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel > .pg{display:flex;flex-direction:column;gap:12px;min-width:0}
+.act{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.act[hidden]{display:none}
+@media (max-width:899px){
+  .wrap.ui{height:100vh;height:100dvh;display:flex;flex-direction:column;padding:8px 12px 0;overflow:hidden}
+  .wrap.ui .top{margin-bottom:6px;gap:6px;row-gap:6px}
+  .wrap.ui .top .back{width:34px;height:34px}
+  .wrap.ui .top h1{font-size:17px;flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wrap.ui .top .sp{display:none}
+  .wrap.ui .top .chip{font-size:12px;padding:2px 8px}
+  .wrap.ui .top .clock{font-size:20px}
+  .wrap.ui .stats{order:10;flex:1 0 100%;gap:6px}
+  .wrap.ui .stat{flex:1;flex-direction:row;align-items:baseline;gap:6px;padding:4px 10px;border-radius:10px}
+  .wrap.ui .stat b{font-size:15px}
+  .ptabs{display:flex;gap:6px;overflow-x:auto;flex:none;margin-bottom:8px;scrollbar-width:none}
+  .ptabs::-webkit-scrollbar{display:none}
+  .ptabs button{flex:1 0 auto;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:13px;white-space:nowrap}
+  .ptabs button[aria-selected="true"]{background:var(--gold);border-color:var(--gold);color:#1A1530;font-weight:700}
+  .team{display:flex;align-items:stretch;flex:1 1 0;min-height:0;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;position:relative;scrollbar-width:none;overscroll-behavior-x:contain}
+  .team::-webkit-scrollbar{display:none}
+  .panel{display:contents}
+  .team .pg{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;overflow-y:auto;overscroll-behavior-y:contain;padding-bottom:14px}
+  .pg-park .stage{height:auto;flex:1 0 240px;min-height:240px}
+  .pg-park .slots{margin-top:0}
+  .swipehint{display:block;text-align:center;font-size:12px;color:var(--muted);margin:0}
+  .act{flex:none;margin:0 -12px;padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg);flex-wrap:nowrap}
+  .act .btn.lg{padding:10px 16px;font-size:16px}
+  .act .cost{font-size:12px;line-height:1.3;min-width:0;flex:1 1 0}
+  .act .btn{white-space:nowrap;flex:none}
+  .act .btn .lbl{display:none}
+  .flow{display:flex;flex-direction:column;gap:6px}
+  .flow .col{width:100%}
+  .flow .bar{writing-mode:horizontal-tb;min-height:0}
+  .flow .mid{text-align:center}
+}
+.act .sp{flex:1}

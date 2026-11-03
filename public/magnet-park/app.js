@@ -50,7 +50,8 @@ const ShakeCharge = (function () {
 
 // ---------- 모둠 기기 화면 ----------
 const ParkUI = (function () {
-  let ctx = null, draft = null, sel = 0, viewer = null, chartT = 0;
+  let ctx = null, draft = null, sel = 0, viewer = null, chartT = 0, curPage = 'park', smoothNext = false, phaseKey = '';
+  const PHASE_PAGE = { design: 'park', run: 'park', wait: 'park', result: 'result', quiz: 'quiz', end: 'end' };
   const FEEL_TONE = k => (FEEL[k] || {}).tone || 'warn';
   function slotName(s) { if (!s) return '빈자리'; return s.name || KINDS[s.kind].name; }
   function slotIcon(s) { return s ? KINDS[s.kind].icon : '＋'; }
@@ -69,47 +70,72 @@ const ParkUI = (function () {
     }
     const W = WEATHER[c.weather] || WEATHER.sun;
     const evs = (c.events || []).map(k => EVENTS[k]).filter(Boolean);
-    root.innerHTML = `<div class="wrap">
+    // 휴대폰: 단계가 바뀌면 그 단계의 첫 페이지로. 다시 그릴 때는 보던 페이지와 세로 위치를 지킨다
+    const pk = c.mode + '|' + c.phase + '|' + c.day;
+    if (pk !== phaseKey) { phaseKey = pk; curPage = PHASE_PAGE[c.phase] || 'park'; }
+    const keepTop = {}; root.querySelectorAll('#uTeam .pg').forEach(e => { keepTop[e.dataset.pg] = e.scrollTop; });
+    root.innerHTML = `<div class="wrap ui">
       <div class="top"><a class="back" href="${c.backHref || '#'}" aria-label="처음으로">←</a><h1>${esc(c.title || '자석 브레이크 놀이공원')}</h1>
         <span class="chip">${Math.min(c.day + 1, c.days)}일째 / ${c.days}일</span><span class="chip">${W.icon} ${W.name}</span>${evs.map(E => `<span class="chip warn" title="${esc(E.text)}">${E.icon} ${E.name}</span>`).join('')}
         <span class="sp"></span>${c.clockHTML || ''}
-        <div class="stat money"><small>돈</small><b id="uMoney">${won(c.money)}</b></div><div class="stat"><small>평판</small><b>${Math.round((c.rep || 1) * 100)}%</b></div><div class="stat"><small>배터리</small><b>${Math.round(c.battery || 0)} kWh</b></div></div>
-      ${c.banner || ''}${evs.length ? `<div class="card" style="margin-bottom:12px;border-color:var(--pink)">${evs.map(E => `<p><b>${E.icon} 오늘의 사건: ${E.name}</b> · ${esc(E.text)}</p>`).join('')}</div>` : ''}
-      <div class="team"><div><div class="stage" id="uStage"><div class="stagebar" id="uBar"></div></div>
-        <div class="slots" role="tablist" aria-label="공원 자리">${draft.slots.map((s, i) => `<button role="tab" aria-selected="${i === sel}" class="${i === sel ? 'on' : ''}" data-slot="${i}"><span>${slotIcon(s)}</span><b>${i + 1}</b><small>${slotName(s)}</small>${c.own ? `<em class="${c.own.includes(i) ? 'mine' : ''}">${c.own.includes(i) ? '내 담당' : esc(c.ownerName && c.ownerName(i) ? c.ownerName(i) + ' 담당' : '')}</em>` : ''}</button>`).join('')}</div></div>
-        <div class="panel" id="uPanel"></div></div></div>`;
+        <div class="stats"><div class="stat money"><small>돈</small><b id="uMoney">${won(c.money)}</b></div><div class="stat"><small>평판</small><b>${Math.round((c.rep || 1) * 100)}%</b></div><div class="stat"><small>배터리</small><b>${Math.round(c.battery || 0)} kWh</b></div></div></div>
+      <nav class="ptabs" id="uTabs" role="tablist" aria-label="화면 넘기기"></nav>
+      <div class="team" id="uTeam"><section class="pg pg-park" data-pg="park" data-label="🏞️ 공원">${c.banner || ''}${evs.length ? `<div class="card evcard">${evs.map(E => `<p><b>${E.icon} 오늘의 사건: ${E.name}</b> · ${esc(E.text)}</p>`).join('')}</div>` : ''}<div class="stage" id="uStage"><div class="stagebar" id="uBar"></div></div>
+        <div class="slots" role="tablist" aria-label="공원 자리">${draft.slots.map((s, i) => `<button role="tab" aria-selected="${i === sel}" class="${i === sel ? 'on' : ''}" data-slot="${i}"><span>${slotIcon(s)}</span><b>${i + 1}</b><small>${slotName(s)}</small>${c.own ? `<em class="${c.own.includes(i) ? 'mine' : ''}">${c.own.includes(i) ? '내 담당' : esc(c.ownerName && c.ownerName(i) ? c.ownerName(i) + ' 담당' : '')}</em>` : ''}</button>`).join('')}</div>
+        <p class="swipehint">${c.phase === 'design' && c.editable ? '자리를 누르면 설계 화면으로 넘어가요 · 옆으로 밀어서 넘기기 →' : '옆으로 밀어서 넘기기 →'}</p></section>
+        <div class="panel" id="uPanel"></div></div>
+      <div class="act" id="uAct"></div></div>`;
     // 3D
     viewer = viewer || Park3D.viewer();
     const stage = $('#uStage');
-    if (viewer) { stage.prepend(viewer.el); viewer.park.build(draft); viewer.park.highlight(c.editable ? sel : -1); viewer.onPick(i => { sel = i; rerender(); }); viewer.park.setDay(c.lastRes && c.phase !== 'design' ? { riders: c.lastRes.riders, weather: c.lastRes.weather, blackout: (c.lastRes.events || []).includes('blackout'), battery: c.battery } : { riders: 600, weather: c.weather, blackout: (c.events || []).includes('blackout'), battery: c.battery }); }
+    if (viewer) { stage.prepend(viewer.el); viewer.park.build(draft); viewer.park.highlight(c.editable ? sel : -1); viewer.onPick(i => { sel = i; if (c.editable) { curPage = 'edit'; smoothNext = true; } rerender(); }); viewer.park.setDay(c.lastRes && c.phase !== 'design' ? { riders: c.lastRes.riders, weather: c.lastRes.weather, blackout: (c.lastRes.events || []).includes('blackout'), battery: c.battery } : { riders: 600, weather: c.weather, blackout: (c.events || []).includes('blackout'), battery: c.battery }); }
     else stage.innerHTML = '<div style="height:100%;display:grid;place-items:center;padding:20px" class="muted">이 기기에서는 3D 화면을 열 수 없어요. 아래 번호로 자리를 고르세요.</div>';
-    root.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { sel = +b.dataset.slot; rerender(); });
+    root.querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { sel = +b.dataset.slot; if (c.editable) { curPage = 'edit'; smoothNext = true; } rerender(); });
     renderPanel();
+    setupPager(keepTop);
+  }
+  // 휴대폰에서는 페이지를 옆으로 넘긴다(넓은 화면에서는 두 칸으로 한 번에 보인다)
+  function setupPager(keepTop) {
+    const team = $('#uTeam'), tabs = $('#uTabs'); if (!team || !tabs) return;
+    const secs = [...team.querySelectorAll('.pg')];
+    secs.forEach(e => { if (keepTop && keepTop[e.dataset.pg]) e.scrollTop = keepTop[e.dataset.pg]; });
+    tabs.innerHTML = secs.map(e => `<button role="tab" data-go="${e.dataset.pg}">${esc(e.dataset.label)}</button>`).join('');
+    const mark = () => tabs.querySelectorAll('[data-go]').forEach(b => { const on = b.dataset.go === curPage; b.setAttribute('aria-selected', on); if (on && b.scrollIntoView && tabs.scrollWidth > tabs.clientWidth) tabs.scrollLeft = b.offsetLeft - 20; });
+    const go = (k, smooth) => { const el = secs.find(e => e.dataset.pg === k) || secs[0]; curPage = el.dataset.pg; team.scrollTo({ left: el.offsetLeft, behavior: smooth ? 'smooth' : 'auto' }); mark(); };
+    tabs.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go, true));
+    let t = 0; team.onscroll = () => { clearTimeout(t); t = setTimeout(() => { if (!team.clientWidth) return; const i = Math.round(team.scrollLeft / team.clientWidth); if (secs[i] && secs[i].dataset.pg !== curPage) { curPage = secs[i].dataset.pg; mark(); } }, 90); };
+    go(curPage, smoothNext); smoothNext = false;
   }
   function rerender() { const root = document.getElementById('app'); if (ctx && root) render(root, Object.assign({}, ctx, { park: ctx.park })); }
   function renderPanel() {
-    const P = $('#uPanel'); if (!P) return;
-    const c = ctx;
-    if (c.phase === 'run') { P.innerHTML = `<div class="card"><h2>🎢 영업 중…</h2><p class="muted">모든 놀이기구가 한 번씩 시운전한 뒤 하루 영업을 해요. 구리판이 빨갛게 빛나는 곳이 유도 전류로 데워지는 곳이에요.</p></div>`; if (viewer && !c.played) { c.played = true; viewer.park.playTest(); } return; }
-    if (c.phase === 'result' && c.lastRes) { P.innerHTML = resultHTML(c.lastRes) + (c.onNext ? `<div class="foot"><span class="sp"></span><button class="btn hot lg" id="uNext">${c.quiz ? '📡 과학 퀴즈' : c.day + 1 >= c.days ? '최종 결과 보기' : '다음 날 준비'}</button></div>` : waitHTML()); bindNext(); return; }
-    if (c.phase === 'quiz' && c.quiz) { P.innerHTML = quizHTML(c.quiz) + (c.quiz.reveal && c.onNext ? `<div class="foot"><span class="sp"></span><button class="btn hot lg" id="uNext">${c.day + 1 >= c.days ? '최종 결과 보기' : '다음 날 준비'}</button></div>` : c.quiz.reveal ? waitHTML() : ''); P.querySelectorAll('[data-qa]').forEach(b => b.onclick = () => c.onQuiz && c.onQuiz(+b.dataset.qa)); bindNext(); return; }
-    if (c.phase === 'end') { P.innerHTML = endHTML(); const r = $('#uRestart'); if (r) r.onclick = () => c.onRestart && c.onRestart(); return; }
-    if (c.phase === 'wait') { P.innerHTML = `<div class="card"><h2>${esc(c.waitText || '선생님이 시작할 때까지 기다려요')}</h2><p class="muted">놀이공원 자리를 미리 살펴보세요. 자리를 누르면 무엇을 지을 수 있는지 보여요.</p></div>`; return; }
-    // 설계
-    const s = draft.slots[sel];
-    let html = '';
-    if (!c.editable) html += `<div class="card"><p class="muted">지금은 설계 시간이 아니에요.</p></div>`;
-    else if (c.own && !c.own.includes(sel)) html += viewHTML(s);
-    else if (!s) html += buildHTML();
-    else if (RIDE_KINDS.includes(s.kind)) html += rideHTML(s);
-    else html += `<div class="card"><h2>${KINDS[s.kind].icon} ${KINDS[s.kind].name}</h2><p>${s.kind === 'solar' ? `맑은 날 하루 ${KINDS.solar.kwh} kWh를 만들어요(흐림·비에는 줄어요). 빛에너지 → 전기 에너지. 전자기 유도가 아닌 광전 효과를 써요.` : `남은 전기를 다음 날로 최대 ${KINDS.battery.cap} kWh까지 넘겨요. 정전 날에 특히 든든해요. 전기 에너지 ↔ 화학 에너지.`}</p>
-      <div class="foot" style="margin-top:10px"><button class="btn" id="uRemove">철거 (${won(itemCost(s) * 0.5)} 돌려받기)</button></div></div>`;
-    html += energyHTML();
-    html += `<div class="foot">${c.shake == null && c.onShake ? `<button class="btn" id="uShake">⚡ 흔들어 충전</button>` : c.shake != null ? `<span class="chip">⚡ 흔들어 충전 ${f1(c.shake)} kWh</span>` : ''}<span class="sp"></span>
-      ${c.editable ? `<span class="muted" id="uCost"></span>${c.onStart ? `<button class="btn hot lg" id="uStart">🎟️ 영업 시작</button>` : `<button class="btn hot lg" id="uSave">${c.saveLabel || '설계 저장'}</button>`}` : ''}</div>`;
-    P.innerHTML = html;
-    bindDesign();
-    updateLive();
+    const P = $('#uPanel'), A = $('#uAct'); if (!P) return;
+    const c = ctx, pages = [];
+    let act = '';
+    const sec = (k, label, html) => pages.push([k, label, html]);
+    const nextBtn = label => c.onNext ? `<span class="sp"></span><button class="btn hot lg" id="uNext">${label}</button>` : waitHTML();
+    if (c.phase === 'run') { sec('info', '🎢 영업 중', `<div class="card"><h2>🎢 영업 중…</h2><p class="muted">모든 놀이기구가 한 번씩 시운전한 뒤 하루 영업을 해요. 구리판이 빨갛게 빛나는 곳이 유도 전류로 데워지는 곳이에요.</p></div>`); if (viewer && !c.played) { c.played = true; viewer.park.playTest(); } }
+    else if (c.phase === 'result' && c.lastRes) { const [a, b] = resultHTML(c.lastRes); sec('result', '📊 결과', a); sec('rides', '🎡 놀이기구', b); act = nextBtn(c.quiz ? '📡 과학 퀴즈' : c.day + 1 >= c.days ? '최종 결과 보기' : '다음 날 준비'); }
+    else if (c.phase === 'quiz' && c.quiz) { sec('quiz', '📡 퀴즈', quizHTML(c.quiz)); if (c.quiz.reveal) act = nextBtn(c.day + 1 >= c.days ? '최종 결과 보기' : '다음 날 준비'); }
+    else if (c.phase === 'end') sec('end', '🏆 최종', endHTML());
+    else if (c.phase === 'wait') sec('info', '⏳ 대기', `<div class="card"><h2>${esc(c.waitText || '선생님이 시작할 때까지 기다려요')}</h2><p class="muted">놀이공원 자리를 미리 살펴보세요. 자리를 누르면 무엇을 지을 수 있는지 보여요.</p></div>`);
+    else {
+      const s = draft.slots[sel], n = sel + 1;
+      if (!c.editable) sec('edit', '🛠️ 설계', `<div class="card"><p class="muted">지금은 설계 시간이 아니에요.</p></div>`);
+      else if (c.own && !c.own.includes(sel)) sec('edit', `👀 ${n}번 자리`, viewHTML(s));
+      else if (!s) sec('edit', `🛠️ ${n}번 짓기`, buildHTML());
+      else if (RIDE_KINDS.includes(s.kind)) { const [a, b] = rideHTML(s); sec('edit', `🛠️ ${n}번 설계`, a); sec('test', '📈 시운전', b); }
+      else sec('edit', `🛠️ ${n}번 자리`, `<div class="card"><h2>${KINDS[s.kind].icon} ${KINDS[s.kind].name}</h2><p>${s.kind === 'solar' ? `맑은 날 하루 ${KINDS.solar.kwh} kWh를 만들어요(흐림·비에는 줄어요). 빛에너지 → 전기 에너지. 전자기 유도가 아닌 광전 효과를 써요.` : `남은 전기를 다음 날로 최대 ${KINDS.battery.cap} kWh까지 넘겨요. 정전 날에 특히 든든해요. 전기 에너지 ↔ 화학 에너지.`}</p>
+        <div class="foot" style="margin-top:10px"><button class="btn" id="uRemove">철거 (${won(itemCost(s) * 0.5)} 돌려받기)</button></div></div>`);
+      sec('energy', '⚡ 전기·의뢰', energyHTML());
+      act = `${c.shake == null && c.onShake ? `<button class="btn" id="uShake">⚡ <span class="lbl">흔들어 </span>충전</button>` : c.shake != null ? `<span class="chip">⚡ ${f1(c.shake)} kWh</span>` : ''}<span class="sp"></span>
+        ${c.editable ? `<span class="muted cost" id="uCost"></span>${c.onStart ? `<button class="btn hot lg" id="uStart">🎟️ 영업 시작</button>` : `<button class="btn hot lg" id="uSave">${c.saveLabel || '설계 저장'}</button>`}` : ''}`;
+    }
+    P.innerHTML = pages.map(([k, l, h]) => `<section class="pg" data-pg="${k}" data-label="${esc(l)}">${h}</section>`).join('');
+    if (A) { A.innerHTML = act; A.hidden = !act.trim(); }
+    bindNext();
+    P.querySelectorAll('[data-qa]').forEach(b => b.onclick = () => c.onQuiz && c.onQuiz(+b.dataset.qa));
+    const r = $('#uRestart'); if (r) r.onclick = () => c.onRestart && c.onRestart();
+    if (c.phase === 'design') { bindDesign(); updateLive(); }
   }
   function viewHTML(s) {
     const who = esc(ctx.ownerName ? ctx.ownerName(sel) : '다른 모둠원');
@@ -132,7 +158,7 @@ const ParkUI = (function () {
     const K = KINDS[s.kind], rg = K.range, drop = s.kind === 'drop';
     const slider = (key, label, hint) => `<label for="r_${key}" ${hint ? `title="${esc(hint)}"` : ''}>${label}</label><input type="range" id="r_${key}" data-k="${key}" min="${rg[key][0]}" max="${rg[key][1]}" step="${rg[key][2]}" value="${s[key]}"><output id="o_${key}">${s[key]}${UNIT[key]}</output>`;
     const seg = (key, label, opts) => `<div class="segrow"><label>${label}</label><div class="seg">${opts.map(([v, t, tip]) => `<button data-set="${key}" data-v="${v}" aria-pressed="${String(s[key] == null ? '' : s[key]) === String(v)}" ${tip ? `title="${esc(tip)}"` : ''}>${t}</button>`).join('')}</div></div>`;
-    return `<div class="card ride"><h2>${K.icon} ${sel + 1}번 ${esc(s.name || K.name)}</h2>
+    return [`<div class="card ride"><h2>${K.icon} ${sel + 1}번 ${esc(s.name || K.name)}</h2>
       <div class="namerow"><label for="r_name">이름 짓기</label><input type="text" id="r_name" maxlength="12" value="${esc(s.name || '')}" placeholder="${drop ? '예: 번개 드롭' : '예: 은하 열차'}" autocomplete="off"></div>
       <h3 class="sec">🚀 탑승차와 출발</h3>
       <div class="ctl">${slider('H', drop ? '탑 높이' : '첫 언덕 높이')}${drop ? slider('seats', '좌석 수') : slider('cars', '열차 칸 수')}</div>
@@ -144,14 +170,14 @@ const ParkUI = (function () {
       <div class="ctl">${slider('rows', '자석 줄 수')}${slider('L', '브레이크 구간')}${slider('thick', '판 두께', '두꺼울수록 유도 전류가 흐를 길이 넓어져 제동이 세다')}${slider('gap', '자석–판 간격', '가까울수록 판을 지나는 자기장이 세다. 10 mm보다 좁히면 정밀 시공비가 든다')}</div>
       ${seg('mat', '브레이크 판', MAT_ORDER.map(k => [k, MATERIALS[k].name, MATERIALS[k].note]))}
       ${seg('regen', '발전 코일', [['false', '없음'], ['true', `달기 +${won(REGEN_COST)} · 제동 에너지 ${Math.round(REGEN_EFF * 100)}% 되찾기`]])}
-    </div>
-    <div class="card"><div class="readout"><div><small>${drop ? '자석 구간 진입 속도' : '브레이크 진입 속도'}</small><b id="vIn"></b></div><div><small>최대 감속</small><b id="pg"></b></div><div><small>끝 속도 / 안전 기준</small><b id="vEnd"></b></div></div>
+      <p class="muted small" style="margin-top:10px">설계를 바꾸면 📈 시운전 화면의 그래프와 판정이 바로 바뀌어요.</p>
+    </div>`, `<div class="card"><div class="readout"><div><small>${drop ? '자석 구간 진입 속도' : '브레이크 진입 속도'}</small><b id="vIn"></b></div><div><small>최대 감속</small><b id="pg"></b></div><div><small>끝 속도 / 안전 기준</small><b id="vEnd"></b></div></div>
       <div class="feel" id="feel" style="margin-top:8px"></div>
       <div class="stars" id="stars"></div>
       <canvas class="chart" id="chart" width="600" height="220" aria-label="속도와 감속 그래프"></canvas>
       <div class="legend"><span><i style="background:#5CC8FF"></i>속도(m/s)</span><span><i style="background:#E08A4B"></i>감속(g)</span><span id="vmin"></span></div>
       <p class="sci" id="sci" style="margin-top:8px"></p>
-      <div class="foot" style="margin-top:10px"><button class="btn" id="uTest">▶ 시운전</button><button class="btn" id="uRemove">철거</button><span class="sp"></span><span class="muted" id="perRide"></span></div></div>`;
+      <div class="foot" style="margin-top:10px"><button class="btn" id="uTest">▶ 시운전</button><button class="btn" id="uRemove">철거</button><span class="sp"></span><span class="muted" id="perRide"></span></div></div>`];
   }
   function missionsHTML(r) {
     const ks = ctx.missions || []; if (!ks.length) return '';
@@ -237,17 +263,17 @@ const ParkUI = (function () {
     const W = WEATHER[r.weather] || WEATHER.sun;
     const left = [['전력망', E.grid, '#8B85C1'], ['태양광', E.solar, '#FFD166'], ['배터리', E.battery, '#4ADE80'], ['흔들기', E.shake, '#5CC8FF'], ['되찾은 전기', E.regen, '#8CE7FF']].filter(x => x[1] > 0.05);
     const right = [['끌어올린 위치 에너지 → 브레이크 열', E.heat, '#E08A4B'], ['되찾아 다시 씀', E.regen, '#8CE7FF']].filter(x => x[1] > 0.05);
-    return `<div class="card result"><div class="eyebrow">${W.icon} ${W.name} ${(r.events || []).map(k => EVENTS[k] ? EVENTS[k].icon + ' ' + EVENTS[k].name : '').join(' ')}</div><h2>오늘의 영업 결과</h2>
+    return [`<div class="card result"><div class="eyebrow">${W.icon} ${W.name} ${(r.events || []).map(k => EVENTS[k] ? EVENTS[k].icon + ' ' + EVENTS[k].name : '').join(' ')}</div><h2>오늘의 영업 결과</h2>
       <div class="kpis"><div><small>손님</small><b>${r.riders.toLocaleString('ko-KR')}</b></div><div><small>수입</small><b>${won(r.income)}</b></div><div><small>전기·벌금·수리</small><b>${won(r.powerCost + r.fines + r.repair)}</b></div>${r.missionBonus ? `<div><small>의뢰 보너스</small><b class="up">+${won(r.missionBonus)}</b></div>` : ''}<div><small>이익</small><b class="${r.profit >= 0 ? 'up' : 'down'}">${won(r.profit)}</b></div></div>
-      <div class="eyebrow">에너지 흐름 (kWh)</div>
+      ${(r.missions || []).length ? `<div class="missions done">${r.missions.map(x => { const M = MISSIONS[x.k]; return M ? `<div class="mi ${x.ok ? 'ok' : 'no'}"><span class="ic">${M.icon}</span><div><b>${M.name}</b><small>${esc(missionText(x.k, r.day == null ? ctx.day : r.day))}</small></div><span class="st">${x.ok ? `✅ +${won(x.reward)}` : '❌'}</span></div>` : ''; }).join('')}</div>` : ''}
+      ${r.notes.length ? `<ul class="notes">${r.notes.map(n => `<li class="${n.tone}">${esc(n.t)}</li>`).join('')}</ul>` : ''}
+      ${r.quizBonus ? `<p class="up" style="margin-top:6px">📡 과학 퀴즈 보너스 +${won(r.quizBonus)}</p>` : ''}</div>`, `<div class="card"><div class="eyebrow">에너지 흐름 (kWh)</div>
       <div class="flow"><div class="col">${left.map(([n, v, c]) => `<div class="bar" style="background:${c}"><span>${n}</span><span>${f1(v)}</span></div>`).join('') || '<span class="muted">없음</span>'}</div>
         <div class="mid">→ 끌어올리기 ${f1(E.lift)} →</div>
         <div class="col">${right.map(([n, v, c]) => `<div class="bar" style="background:${c}"><span>${n}</span><span>${f1(v)}</span></div>`).join('')}</div></div>
       <p class="muted" style="font-size:13px">전력망 전기 ${f1(E.grid)} kWh → 이산화 탄소 약 ${f1(r.co2)} kg · 되찾은 전기 비율 ${E.lift ? Math.round(E.regen / E.lift * 100) : 0}%</p>
-      ${r.notes.length ? `<ul class="notes">${r.notes.map(n => `<li class="${n.tone}">${esc(n.t)}</li>`).join('')}</ul>` : ''}
-      ${(r.missions || []).length ? `<div class="missions done">${r.missions.map(x => { const M = MISSIONS[x.k]; return M ? `<div class="mi ${x.ok ? 'ok' : 'no'}"><span class="ic">${M.icon}</span><div><b>${M.name}</b><small>${esc(missionText(x.k, r.day == null ? ctx.day : r.day))}</small></div><span class="st">${x.ok ? `✅ +${won(x.reward)}` : '❌'}</span></div>` : ''; }).join('')}</div>` : ''}
-      <div class="ridelist">${r.rides.map(x => `<div><span>${KINDS[x.kind].icon} ${x.i + 1}번${x.name ? ` 「${esc(x.name)}」` : ''}</span><span>${FEEL[x.feel].label} · 감속 ${f1(x.peakG)}g · 끝 속도 ${f1(x.vEnd)} m/s</span><b class="num">${x.riders.toLocaleString('ko-KR')}명</b>${x.review ? `<q>${esc(x.review)}</q>` : ''}</div>`).join('')}</div>
-      ${r.quizBonus ? `<p class="up" style="margin-top:6px">📡 과학 퀴즈 보너스 +${won(r.quizBonus)}</p>` : ''}</div>`;
+      <div class="eyebrow" style="margin-top:12px">놀이기구별 손님과 한마디</div>
+      <div class="ridelist">${r.rides.map(x => `<div><span>${KINDS[x.kind].icon} ${x.i + 1}번${x.name ? ` 「${esc(x.name)}」` : ''}</span><span>${FEEL[x.feel].label} · 감속 ${f1(x.peakG)}g · 끝 속도 ${f1(x.vEnd)} m/s</span><b class="num">${x.riders.toLocaleString('ko-KR')}명</b>${x.review ? `<q>${esc(x.review)}</q>` : ''}</div>`).join('') || '<p class="muted">운행한 놀이기구가 없어요.</p>'}</div></div>`];
   }
   function quizHTML(q) {
     const Q = q.Q;
