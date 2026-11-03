@@ -205,3 +205,26 @@ body.boardmode{overflow:hidden}
 .members span.ok{border-color:var(--good,#4ADE80)}
 .members span.me{outline:2px solid var(--gold)}
 .joinform{display:grid;gap:10px;max-width:520px}
+/* 설계 변인·의뢰·손님 한마디 */
+.ride .sec{font-size:15px;margin:14px 0 6px;color:var(--gold);font-family:var(--body);font-weight:700}
+.segrow{margin-top:8px}.segrow > label{display:block;margin-bottom:4px}
+.namerow{display:grid;grid-template-columns:86px 1fr;gap:8px;align-items:center;margin-top:8px}
+.namerow input{min-width:0}
+.small{font-size:13px}
+.stars{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-top:8px;font-size:14px}
+.stars i{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--gold) var(--p),var(--panel2) var(--p))}
+.stars em{grid-column:1/-1;font-style:normal;font-size:12px;color:var(--muted)}
+.stars em + em{margin-top:-6px}
+.missions{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.missions .mi{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.missions .mi.ok{border-color:#4ADE80;background:rgba(74,222,128,.10)}
+.missions .mi.no{opacity:.65}
+.missions .ic{font-size:22px;text-align:center}
+.missions .mi b{display:block;font-size:14px}.missions .mi b em{font-style:normal;color:var(--gold);font-family:var(--mono)}
+.missions .mi small{color:var(--muted);font-size:12px}
+.missions .st{font-size:13px;white-space:nowrap}
+.missions.done{margin:10px 0}
+.ridelist q{grid-column:1/-1;font-size:13px;color:var(--muted);quotes:"“" "”"}
+.bd-mis{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:clamp(14px,1.9vh,18px)}
+.bd-mis span{background:var(--panel2);border-radius:999px;padding:3px 12px}
+.bd-mis em{font-style:normal;color:var(--gold);font-family:var(--mono)}

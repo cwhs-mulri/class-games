@@ -12,7 +12,7 @@ const LIVE = (function () {
   const TIMED = ['design', 'run', 'result', 'quiz', 'quizres'];
   const pp = code => 'parks/' + String(code).replace(/[.#$\[\]\/]/g, '_');
   const arr = v => Array.isArray(v) ? v.filter(x => x != null) : v && typeof v === 'object' ? Object.keys(v).sort((a, b) => a - b).map(k => v[k]) : [];
-  const normRes = r => r ? Object.assign({}, r, { events: arr(r.events), notes: arr(r.notes), rides: arr(r.rides) }) : null;
+  const normRes = r => r ? Object.assign({}, r, { events: arr(r.events), notes: arr(r.notes), rides: arr(r.rides), missions: arr(r.missions) }) : null;
   const qrImg = (text, px) => `<img src="data:image/svg+xml,${encodeURIComponent(qrSVG(text))}" width="${px}" height="${px}" alt="모둠 기기 접속 QR 코드">`;
   const teamURL = code => `${location.origin}${location.pathname}${location.search.includes('local') ? '?local' : ''}#join/${code}`;
   let cur = null, R = blank();
@@ -168,7 +168,8 @@ const LIVE = (function () {
         }
         park = cleanPark(park);
         const cost = changeCost(r0.park, park), sk = shakeOf(g, day);
-        const r = runDay(park, { money: r0.money - cost, rep: r0.rep, battery: r0.battery }, { weather, events, shakeKWh: sk });
+        const r = runDay(park, { money: r0.money - cost, rep: r0.rep, battery: r0.battery }, { weather, events, shakeKWh: sk, missions: dayMissions(code, day), day });
+        r.day = day;
         if (skipped.length) r.notes.unshift({ tone: 'bad', t: `돈이 모자라 ${skipped.map(i => i + 1).join('·')}번 자리 설계를 적용하지 못했어요` });
         if (cost) r.notes.unshift({ tone: 'warn', t: `설계 비용 ${won(cost)}` });
         if (sk) r.notes.push({ tone: 'good', t: `모둠원 흔들어 충전 평균 ${f1(sk)} kWh` });
@@ -255,6 +256,7 @@ const LIVE = (function () {
         ${l.sub === 'lobby' ? '<p class="muted" style="margin-top:8px;font-size:14px">설계를 시작하는 순간의 모둠원으로 자리 담당이 정해져요(들어온 순서대로 1번 학생이 에너지 팀장). 늦게 들어온 학생은 다음 날부터 자리를 맡아요.</p>' : ''}</div>
       <div class="card"><h3>오늘의 사건 ${evEditable ? '<span class="muted">설계 시간까지 바꿀 수 있어요</span>' : '<span class="muted">다음 날 설계 때 고를 수 있어요</span>'}</h3>
         <div class="evs" style="margin-top:8px">${EVENT_ORDER.map(k => `<button data-ev="${k}" aria-pressed="${evs.includes(k)}" ${evEditable ? '' : 'disabled'}><span>${EVENTS[k].icon}</span><b>${EVENTS[k].name}</b><small>${esc(EVENTS[k].text)}</small></button>`).join('')}</div>
+        <p style="margin-top:10px"><b>📋 오늘의 의뢰</b> ${dayMissions(cur.code, day).map(k => `${MISSIONS[k].icon} ${MISSIONS[k].name}(${esc(missionText(k, day))}, +${won(MISSIONS[k].reward)})`).join(' · ')}</p>
         <p class="muted" style="margin-top:8px;font-size:13px">오늘 날씨: ${WEATHER[dayWeather(cur.code, day)].icon} ${WEATHER[dayWeather(cur.code, day)].name} (수업 코드로 정해져요)</p></div>
       <div class="card scroll"><table class="ttable"><thead><tr><th>모둠</th><th>모둠원 (눌러서 내보내기)</th><th>${l.sub === 'design' ? '설계' : '시설'}</th><th>돈</th><th>평판</th><th>${day + 1}일째 이익</th><th>퀴즈</th></tr></thead><tbody>${rows}</tbody></table></div>
       ${l.sub === 'quiz' || l.sub === 'quizres' ? `<div class="card"><div class="eyebrow">📡 오늘의 퀴즈 · 모둠 보너스 = 150만원 × 정답 비율</div><p><b>${Q.q}</b></p><p class="muted">정답: ${'ABCD'[Q.c]}. ${Q.a[Q.c]}</p></div>` : ''}
@@ -295,9 +297,10 @@ const LIVE = (function () {
       <button class="btn" id="bFull">${document.fullscreenElement ? '전체화면 끄기' : '⛶ 전체화면'}</button></div>`;
     let band = '';
     if (l.sub === 'lobby') band = `<div class="bd-band"><h2>휴대폰으로 QR을 찍고 이름과 모둠을 고르세요 · 접속 ${Object.keys(R.players || {}).length}명 · 모둠원이 공원 자리를 나눠 맡아요</h2></div>`;
-    else if (l.sub === 'design') band = `<div class="bd-band ${evs.length ? 'ev' : ''}"><h2>${W.icon} ${W.name} · 내 담당 자리의 놀이기구와 자석 브레이크를 설계하세요 ${evs.map(k => `· ${EVENTS[k].icon} ${EVENTS[k].name}`).join(' ')}</h2></div>`;
+    else if (l.sub === 'design') band = `<div class="bd-band ${evs.length ? 'ev' : ''}"><h2>${W.icon} ${W.name} · 내 담당 자리의 놀이기구와 자석 브레이크를 설계하세요 ${evs.map(k => `· ${EVENTS[k].icon} ${EVENTS[k].name}`).join(' ')}</h2>
+      <p class="bd-mis">📋 오늘의 의뢰 ${dayMissions(cur.code, day).map(k => `<span>${MISSIONS[k].icon} <b>${MISSIONS[k].name}</b> ${esc(missionText(k, day))} <em>+${won(MISSIONS[k].reward)}</em></span>`).join('')}</p></div>`;
     else if (l.sub === 'run') band = `<div class="bd-band"><h2>🎟️ 영업 중… 탑승차가 자석 구간을 지날 때 구리판이 빨갛게 데워져요 (운동 에너지 → 열에너지)</h2></div>`;
-    else if (l.sub === 'result') band = `<div class="bd-band"><h2>오늘의 결과 · 돈을 가장 많이 번 모둠과 전기를 가장 많이 되찾은 모둠은?</h2></div>`;
+    else if (l.sub === 'result') band = `<div class="bd-band"><h2>오늘의 결과 · 돈을 가장 많이 번 모둠과 전기를 가장 많이 되찾은 모둠은?</h2>${recordsHTML(day)}</div>`;
     else if (l.sub === 'quiz' || l.sub === 'quizres') { const Q = quizFor(cur.code, day); band = `<div class="bd-band"><h2>📡 ${Q.q}</h2><p style="font-size:18px;margin-top:4px">${Q.a.map((a, i) => `<span style="margin-right:14px;${l.sub === 'quizres' && i === Q.c ? 'color:var(--gold);font-weight:700' : ''}">${'ABCD'[i]}. ${a}</span>`).join('')}</p>${l.sub === 'quizres' ? `<p class="muted" style="margin-top:4px">${Q.e}</p>` : ''}</div>`; }
     const body = l.sub === 'end' ? endBoardHTML() : `<div class="bd-grid n${ord.length}">${ord.map(g => cardHTML(g, l, day)).join('')}</div>`;
     let ov = '';
@@ -327,11 +330,25 @@ const LIVE = (function () {
       const ratio = h.energy.lift ? Math.round(h.energy.regen / h.energy.lift * 100) : 0, crash = h.rides.filter(x => x.feel === 'crash').length;
       live = `<div class="bd-live"><span>👥 ${h.riders.toLocaleString('ko-KR')}명</span><span class="${h.profit >= 0 ? 'up' : 'down'}">${h.profit >= 0 ? '+' : ''}${won(h.profit)}</span><span>♻️ 되찾은 전기 ${ratio}%</span>${h.energy.f < 1 ? `<span class="down">⚡ 운행 ${Math.round(h.energy.f * 100)}%</span>` : ''}${crash ? `<span class="down">💥 충돌 ${crash}</span>` : ''}</div>`;
       const Q = quizFor(cur.code, day);
-      row = l.sub === 'result' ? `<span class="muted">이산화 탄소 ${f1(h.co2)} kg</span>` : chips(u => { const a = quizOf(u, day); return `<span class="${a == null ? '' : l.sub === 'quizres' ? (a === Q.c ? 'ok' : '') : 'ok'}">${a == null ? '…' : l.sub === 'quizres' ? (a === Q.c ? '⭕' : '❌') : '✔'} ${nameOf(u)}</span>`; });
+      row = l.sub === 'result' ? `${h.missions.map(x => MISSIONS[x.k] ? `<span class="chip ${x.ok ? 'good' : ''}">${MISSIONS[x.k].icon} ${x.ok ? '✅' : '❌'}</span>` : '').join('')}<span class="muted">이산화 탄소 ${f1(h.co2)} kg</span>` : chips(u => { const a = quizOf(u, day); return `<span class="${a == null ? '' : l.sub === 'quizres' ? (a === Q.c ? 'ok' : '') : 'ok'}">${a == null ? '…' : l.sub === 'quizres' ? (a === Q.c ? '⭕' : '❌') : '✔'} ${nameOf(u)}</span>`; });
     }
     return `<div class="bd-card"><header><b>${esc(G(g).name)}</b><span class="muted">${park.slots.map(s => s ? KINDS[s.kind].icon : '').join(' ')}</span><span class="m">${won(r.money)}</span></header>
       <div class="bd-view" data-view="${g}">${live}</div><div class="bd-row sub">${row}</div></div>`;
   }
+  // 반 기록판: 지금까지 가장 빠른·높은·인기 있는 놀이기구(사고 난 것은 빼고)
+  function records(upTo) {
+    const all = [];
+    for (const g of order()) histList(g).forEach((h, d) => { if (d > upTo) return; h.rides.forEach(x => { if (x.feel !== 'crash' && x.feel !== 'stall' && x.riders > 0) all.push(Object.assign({ g, d }, x)); }); });
+    const top = f => all.length ? all.reduce((a, b) => f(b) > f(a) ? b : a) : null;
+    const nm = x => `${esc(G(x.g).name)} ${x.name ? `「${esc(x.name)}」` : KINDS[x.kind].name}`;
+    const out = [];
+    const sp = top(x => x.vIn); if (sp) out.push(['⚡', '최고 속도', nm(sp), `${f1(sp.vIn)} m/s`]);
+    const hi = top(x => x.kind === 'drop' ? x.H : -1); if (hi && hi.kind === 'drop') out.push(['🗼', '가장 높은 자이로드롭', nm(hi), `${hi.H} m`]);
+    const th = top(x => x.thrill); if (th) out.push(['⭐', '인기 최고', nm(th), `${th.thrill} / ${THRILL_MAX}`]);
+    const lp = top(x => x.loop || 0); if (lp && lp.loop) out.push(['🌀', '가장 큰 루프', nm(lp), `${lp.loop * 2} m`]);
+    return out;
+  }
+  function recordsHTML(day) { const rc = records(day); return rc.length ? `<p class="bd-mis">🏅 반 기록 ${rc.map(([ic, n, who, v]) => `<span>${ic} ${n} <b>${who}</b> <em>${v}</em></span>`).join('')}</p>` : ''; }
   function teamStats(g) {
     const r = resOf(g), hs = histList(g);
     const sum = k => hs.reduce((a, h) => a + (k(h) || 0), 0);
@@ -355,7 +372,7 @@ const LIVE = (function () {
     if (rd) aw.push(['🎡', '인기 설계사', { name: `${nameOf(rd.u)} (${esc(G(R.players[rd.u].g).name)})` }, () => `담당 놀이기구 손님 ${rd.sc.riders.toLocaleString('ko-KR')}명`]);
     return `<div class="bd-end"><div class="cols"><div><h2>🏆 최종 순위</h2><p class="muted">점수 = 돈 + 시설 값의 절반</p>
       <ol class="rank">${st.map((s, i) => `<li class="${i === 0 ? 'top' : ''}"><span>${i + 1}</span><span><b style="font-family:var(--display);font-weight:400;font-size:20px">${esc(s.name)}</b> <small class="muted">손님 ${s.riders.toLocaleString('ko-KR')} · 되찾기 ${Math.round(s.ratio * 100)}% · CO₂ ${Math.round(s.co2)} kg${s.crash ? ` · 💥${s.crash}` : ''}</small></span><b>${s.score.toLocaleString('ko-KR')}</b></li>`).join('')}</ol></div>
-      <div><h2>🎖️ 특별상</h2><ul class="awards">${aw.map(([ic, n, s, d]) => `<li><span>${ic}</span><div><b>${n} · ${s.name.includes('<') || s.name.includes('&') ? s.name : esc(s.name)}</b><small>${d(s)}</small></div></li>`).join('')}</ul>
+      <div><h2>🎖️ 특별상</h2>${records(99).length ? `<ul class="awards">${records(99).map(([ic, n, who, v]) => `<li><span>${ic}</span><div><b>반 기록 · ${n}</b><small>${who} · ${v}</small></div></li>`).join('')}</ul>` : ''}<ul class="awards">${aw.map(([ic, n, s, d]) => `<li><span>${ic}</span><div><b>${n} · ${s.name.includes('<') || s.name.includes('&') ? s.name : esc(s.name)}</b><small>${d(s)}</small></div></li>`).join('')}</ul>
         <div class="card" style="margin-top:14px"><div class="eyebrow">정리 질문</div><p>1. 자석 브레이크가 정전에도 작동하는 까닭을 유도 전류로 설명해 보자.</p><p>2. 브레이크 판을 플라스틱으로 바꾸면 왜 멈추지 않을까?</p><p>3. 끌어올리는 데 쓴 전기 에너지는 어떤 에너지로 바뀌어 사라졌을까? 발전 코일은 그중 무엇을 되찾았나?</p></div></div></div></div>`;
   }
 
@@ -387,7 +404,7 @@ const LIVE = (function () {
     ParkUI.render(root, {
       mode: 'class', title: `${G(g).name} 놀이공원`, day, days: M().days || DAYS_DEFAULT, money: r.money, rep: r.rep, battery: r.battery,
       weather: dayWeather(cur.code, day), events: arr(l.events), park: r.park, draft: groupDraft(g, day), phase, editable: phase === 'design' && (own.length > 0 || chief),
-      own, powerMine: chief, ownerName: i => { const u = ownerOf(g, i, mem); return u ? rawName(u) : ''; }, banner, saveLabel: readyOf(uid, day) ? '✅ 완료됨 · 다시 저장' : '내 설계 완료',
+      own, powerMine: chief, missions: dayMissions(cur.code, day), ownerName: i => { const u = ownerOf(g, i, mem); return u ? rawName(u) : ''; }, banner, saveLabel: readyOf(uid, day) ? '✅ 완료됨 · 다시 저장' : '내 설계 완료',
       lastRes: r.hist[day] ? normRes(r.hist[day]) : null, hist: histList(g), shake: myShake == null ? null : myShake, backHref: '#', clockHTML: clockHTML(),
       waitText: l.sub === 'lobby' ? `${G(g).name} 참여 완료! 선생님이 시작할 때까지 기다려요` : '',
       quiz: phase === 'quiz' ? { Q: quizFor(cur.code, day), mine: qa, reveal: l.sub === 'quizres' } : null,

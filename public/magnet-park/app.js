@@ -52,7 +52,7 @@ const ShakeCharge = (function () {
 const ParkUI = (function () {
   let ctx = null, draft = null, sel = 0, viewer = null, chartT = 0;
   const FEEL_TONE = k => (FEEL[k] || {}).tone || 'warn';
-  function slotName(s) { if (!s) return '빈자리'; return KINDS[s.kind].name; }
+  function slotName(s) { if (!s) return '빈자리'; return s.name || KINDS[s.kind].name; }
   function slotIcon(s) { return s ? KINDS[s.kind].icon : '＋'; }
   function stateFor() { return { money: ctx.money, rep: ctx.rep, battery: ctx.battery }; }
   function pendingCost() { return changeCost(ctx.park, draft); }
@@ -116,7 +116,7 @@ const ParkUI = (function () {
     if (!s) return `<div class="card"><h2>${sel + 1}번 빈자리</h2><p class="muted">${who} 담당 자리예요. 무엇을 지을지 함께 의논해 보세요.</p></div>`;
     if (!RIDE_KINDS.includes(s.kind)) return `<div class="card"><h2>${KINDS[s.kind].icon} ${sel + 1}번 ${KINDS[s.kind].name}</h2><p class="muted">${who} 담당</p></div>`;
     const R = simRide(s), K = KINDS[s.kind], F = FEEL[R.feel];
-    return `<div class="card"><h2>${K.icon} ${sel + 1}번 ${K.name}</h2><p class="muted" style="margin-bottom:8px">${who} 담당 · 높이 ${s.H} m · ${GRADES[s.grade].name} 자석 ${s.rows}줄 · ${MATERIALS[s.mat].name} · 브레이크 ${s.L} m${s.regen ? ' · 발전 코일' : ''}</p>
+    return `<div class="card"><h2>${K.icon} ${sel + 1}번 ${K.name}</h2><p class="muted" style="margin-bottom:8px">${who} 담당${s.name ? ` · 「${esc(s.name)}」` : ''} · 높이 ${s.H} m · ${BODIES[s.body].name}${s.launch ? ' · 전자기 발사' : ''}${s.loop ? ` · 루프 ${s.loop * 2} m` : ''} · ${GRADES[s.grade].name} ${s.rows}줄 · ${MATERIALS[s.mat].name} ${s.thick} mm · 간격 ${s.gap} mm · 브레이크 ${s.L} m${s.regen ? ' · 발전 코일' : ''} · 인기 ${R.thrill}/${THRILL_MAX}</p>
       <div class="readout"><div><small>진입 속도</small><b>${f1(R.vIn)} <small>m/s</small></b></div><div><small>최대 감속</small><b class="${R.peakG > K.comfort.strong ? 'down' : ''}">${f1(R.peakG)} <small>g</small></b></div><div><small>끝 속도 / 기준</small><b class="${R.crash ? 'down' : 'up'}">${f1(R.vEnd)} / ${K.safeEnd}</b></div></div>
       <div class="feel ${F.tone}" style="margin-top:8px"><b>${F.label}</b><span>${F.tip}</span></div></div>`;
   }
@@ -127,34 +127,43 @@ const ParkUI = (function () {
     return `<div class="card"><h2>${sel + 1}번 자리 · 무엇을 지을까?</h2><p class="muted" style="margin:4px 0 10px">놀이기구는 모두 자석 브레이크로 멈춰요. 전기가 모자라면 태양광·배터리도 필요해요.</p>
       <div class="build">${KIND_ORDER.map(k => { const item = k === 'solar' || k === 'battery' ? { kind: k } : newRide(k); const cst = itemCost(item); return `<button data-build="${k}" ${cst > left ? 'disabled' : ''}><b>${KINDS[k].icon} ${KINDS[k].name}</b><small>${won(cst)}${k === 'solar' ? ` · 맑은 날 ${KINDS.solar.kwh} kWh` : k === 'battery' ? ` · ${KINDS.battery.cap} kWh 저장` : ''}</small></button>`; }).join('')}</div></div>`;
   }
+  const UNIT = { H: ' m', L: ' m', seats: '석', cars: '칸', rows: '줄', thick: ' mm', gap: ' mm' };
   function rideHTML(s) {
-    const K = KINDS[s.kind], rg = K.range;
-    const slider = (key, label, unit) => `<label for="r_${key}">${label}</label><input type="range" id="r_${key}" data-k="${key}" min="${rg[key][0]}" max="${rg[key][1]}" step="${rg[key][2]}" value="${s[key]}"><output id="o_${key}">${s[key]}${unit}</output>`;
-    return `<div class="card"><h2>${K.icon} ${sel + 1}번 ${K.name}</h2>
-      <div class="ctl" style="margin-top:10px">
-        ${slider('H', s.kind === 'drop' ? '탑 높이' : '첫 언덕 높이', ' m')}
-        ${s.kind === 'drop' ? slider('seats', '좌석 수', '석') : slider('cars', '열차 칸 수', '칸')}
-        ${slider('rows', '자석 줄 수', '줄')}
-        ${slider('L', '브레이크 구간', ' m')}
-      </div>
-      <div style="margin-top:10px"><label>자석 세기</label><div class="seg">${GRADES.map((G_, i) => `<button data-grade="${i}" aria-pressed="${s.grade === i}">${G_.name} ${G_.B} T</button>`).join('')}</div></div>
-      <div style="margin-top:8px"><label>브레이크 판</label><div class="seg">${MAT_ORDER.map(k => `<button data-mat="${k}" aria-pressed="${s.mat === k}" title="${esc(MATERIALS[k].note)}">${MATERIALS[k].name}</button>`).join('')}</div></div>
-      <div style="margin-top:8px"><label>발전 코일(회생 제동)</label><div class="seg"><button data-regen="0" aria-pressed="${!s.regen}">없음</button><button data-regen="1" aria-pressed="${!!s.regen}">달기 +${won(REGEN_COST)} · 제동 에너지 ${Math.round(REGEN_EFF * 100)}% 되찾기</button></div></div>
+    const K = KINDS[s.kind], rg = K.range, drop = s.kind === 'drop';
+    const slider = (key, label, hint) => `<label for="r_${key}" ${hint ? `title="${esc(hint)}"` : ''}>${label}</label><input type="range" id="r_${key}" data-k="${key}" min="${rg[key][0]}" max="${rg[key][1]}" step="${rg[key][2]}" value="${s[key]}"><output id="o_${key}">${s[key]}${UNIT[key]}</output>`;
+    const seg = (key, label, opts) => `<div class="segrow"><label>${label}</label><div class="seg">${opts.map(([v, t, tip]) => `<button data-set="${key}" data-v="${v}" aria-pressed="${String(s[key] == null ? '' : s[key]) === String(v)}" ${tip ? `title="${esc(tip)}"` : ''}>${t}</button>`).join('')}</div></div>`;
+    return `<div class="card ride"><h2>${K.icon} ${sel + 1}번 ${esc(s.name || K.name)}</h2>
+      <div class="namerow"><label for="r_name">이름 짓기</label><input type="text" id="r_name" maxlength="12" value="${esc(s.name || '')}" placeholder="${drop ? '예: 번개 드롭' : '예: 은하 열차'}" autocomplete="off"></div>
+      <h3 class="sec">🚀 탑승차와 출발</h3>
+      <div class="ctl">${slider('H', drop ? '탑 높이' : '첫 언덕 높이')}${drop ? slider('seats', '좌석 수') : slider('cars', '열차 칸 수')}</div>
+      ${seg('body', '차체', BODY_ORDER.map(k => [k, `${BODIES[k].name}${k === 'light' ? ` +${won(drop ? 350 : 70 * s.cars)}` : ''}`, BODIES[k].note]))}
+      ${seg('launch', '출발 방식', [['false', drop ? '전동기로 끌어올리기' : '체인으로 끌어올리기', `전동기 효율 ${Math.round(MOTOR_EFF * 100)}%`], ['true', `⚡ 전자기 발사 +${won(LAUNCH_COST)}`, `선형 유도 전동기로 쏘아 올림. 인기 +1.5, 효율 ${Math.round(LAUNCH_EFF * 100)}%라 전기가 더 든다`]])}
+      ${drop ? '' : `<h3 class="sec">🌀 수직 루프</h3>${seg('loop', '루프 높이', LOOPS.map(R => [R, R ? `${R * 2} m` : '없음', R ? `반지름 약 ${R} m · +${won(150 + R * 25)}` : '']))}<p class="muted small" id="loopInfo"></p>`}
+      <h3 class="sec">🧲 자석 브레이크</h3>
+      ${seg('grade', '자석 세기', GRADES.map((G_, i) => [i, `${G_.name} ${G_.B} T`]))}
+      <div class="ctl">${slider('rows', '자석 줄 수')}${slider('L', '브레이크 구간')}${slider('thick', '판 두께', '두꺼울수록 유도 전류가 흐를 길이 넓어져 제동이 세다')}${slider('gap', '자석–판 간격', '가까울수록 판을 지나는 자기장이 세다. 10 mm보다 좁히면 정밀 시공비가 든다')}</div>
+      ${seg('mat', '브레이크 판', MAT_ORDER.map(k => [k, MATERIALS[k].name, MATERIALS[k].note]))}
+      ${seg('regen', '발전 코일', [['false', '없음'], ['true', `달기 +${won(REGEN_COST)} · 제동 에너지 ${Math.round(REGEN_EFF * 100)}% 되찾기`]])}
     </div>
-    <div class="card"><div class="readout"><div><small>${s.kind === 'drop' ? '자석 구간 진입 속도' : '브레이크 진입 속도'}</small><b id="vIn"></b></div><div><small>최대 감속</small><b id="pg"></b></div><div><small>끝 속도 / 안전 기준</small><b id="vEnd"></b></div></div>
+    <div class="card"><div class="readout"><div><small>${drop ? '자석 구간 진입 속도' : '브레이크 진입 속도'}</small><b id="vIn"></b></div><div><small>최대 감속</small><b id="pg"></b></div><div><small>끝 속도 / 안전 기준</small><b id="vEnd"></b></div></div>
       <div class="feel" id="feel" style="margin-top:8px"></div>
+      <div class="stars" id="stars"></div>
       <canvas class="chart" id="chart" width="600" height="220" aria-label="속도와 감속 그래프"></canvas>
       <div class="legend"><span><i style="background:#5CC8FF"></i>속도(m/s)</span><span><i style="background:#E08A4B"></i>감속(g)</span><span id="vmin"></span></div>
       <p class="sci" id="sci" style="margin-top:8px"></p>
       <div class="foot" style="margin-top:10px"><button class="btn" id="uTest">▶ 시운전</button><button class="btn" id="uRemove">철거</button><span class="sp"></span><span class="muted" id="perRide"></span></div></div>`;
   }
+  function missionsHTML(r) {
+    const ks = ctx.missions || []; if (!ks.length) return '';
+    return `<div class="missions"><div class="eyebrow">📋 오늘의 의뢰 · 달성하면 보너스</div>${ks.map(k => { const M = MISSIONS[k], x = r && (r.missions || []).find(m => m.k === k); return `<div class="mi ${x && x.ok ? 'ok' : ''}"><span class="ic">${M.icon}</span><div><b>${M.name} <em>+${won(M.reward)}</em></b><small>${esc(missionText(k, ctx.day))}</small></div><span class="st">${x && x.ok ? '✅ 달성 예상' : '⬜'}</span></div>`; }).join('')}</div>`;
+  }
   function energyHTML() {
     const st = stateFor();
-    const r = runDay(draft, st, { weather: ctx.weather, events: ctx.events, shakeKWh: ctx.shake || 0 });
+    const r = runDay(draft, st, { weather: ctx.weather, events: ctx.events, shakeKWh: ctx.shake || 0, missions: ctx.missions, day: ctx.day });
     const E = r.energy, tot = Math.max(E.need, E.supply, 1);
     const seg = (v, col) => v > 0 ? `<i style="width:${Math.min(100, v / tot * 100)}%;background:${col}"></i>` : '';
     const grid = Math.max(0, E.supply - E.solarMade - E.battery - E.shake);
-    return `<div class="card"><div class="eyebrow">⚡ 오늘 전기 예상 (끌어올리기 − 되찾은 전기)</div>
+    return `<div class="card">${missionsHTML(r)}<div class="eyebrow">⚡ 오늘 전기 예상 (끌어올리기 − 되찾은 전기)</div>
       <p style="margin:6px 0">필요 <b class="num">${Math.round(E.need)} kWh</b> · 공급 <b class="num">${Math.round(E.supply)} kWh</b> ${E.f < 1 ? `<span class="chip bad">운행 ${Math.round(E.f * 100)}%로 줄어듦</span>` : '<span class="chip good">충분</span>'}</p>
       <div class="energybar" aria-hidden="true">${seg(grid, '#8B85C1')}${seg(E.solarMade, '#FFD166')}${seg(E.battery, '#4ADE80')}${seg(E.shake, '#5CC8FF')}</div>
       <div class="ekeys"><span style="--c:#8B85C1">계약 전력 ${Math.round(grid)}</span><span style="--c:#FFD166">태양광 ${Math.round(E.solarMade)}</span><span style="--c:#4ADE80">배터리 ${Math.round(E.battery)}</span><span style="--c:#5CC8FF">흔들기 ${f1(E.shake)}</span><span>되찾은 전기 ${Math.round(E.regen)} (빼고 계산)</span></div>
@@ -164,11 +173,14 @@ const ParkUI = (function () {
     const P = $('#uPanel');
     P.querySelectorAll('[data-build]').forEach(b => b.onclick = () => { const k = b.dataset.build; draft.slots[sel] = k === 'solar' || k === 'battery' ? { kind: k } : newRide(k); afterEdit(true); });
     const rm = $('#uRemove'); if (rm) rm.onclick = () => { draft.slots[sel] = null; afterEdit(true); };
-    P.querySelectorAll('input[type=range]').forEach(inp => inp.oninput = () => { draft.slots[sel][inp.dataset.k] = +inp.value; const o = $('#o_' + inp.dataset.k); if (o) o.textContent = inp.value + ({ H: ' m', L: ' m', seats: '석', cars: '칸', rows: '줄' }[inp.dataset.k] || ''); afterEdit(false); });
+    P.querySelectorAll('input[type=range]').forEach(inp => inp.oninput = () => { draft.slots[sel][inp.dataset.k] = +inp.value; const o = $('#o_' + inp.dataset.k); if (o) o.textContent = inp.value + (UNIT[inp.dataset.k] || ''); afterEdit(false); });
     P.querySelectorAll('input[type=range]').forEach(inp => inp.onchange = () => afterEdit(true, true));
-    P.querySelectorAll('[data-grade]').forEach(b => b.onclick = () => { draft.slots[sel].grade = +b.dataset.grade; afterEdit(true); });
-    P.querySelectorAll('[data-mat]').forEach(b => b.onclick = () => { draft.slots[sel].mat = b.dataset.mat; afterEdit(true); });
-    P.querySelectorAll('[data-regen]').forEach(b => b.onclick = () => { draft.slots[sel].regen = b.dataset.regen === '1'; afterEdit(true); });
+    P.querySelectorAll('[data-set]').forEach(b => b.onclick = () => {
+      const k = b.dataset.set, v = b.dataset.v;
+      draft.slots[sel][k] = v === 'true' ? true : v === 'false' ? false : /^-?\d+(\.\d+)?$/.test(v) ? +v : v;
+      afterEdit(true);
+    });
+    const nm = $('#r_name'); if (nm) nm.onchange = () => { draft.slots[sel].name = nm.value; afterEdit(false); const b = document.querySelector(`[data-slot="${sel}"] small`); if (b) b.textContent = slotName(draft.slots[sel]); };
     const t = $('#uTest'); if (t && viewer) t.onclick = () => { viewer.park.build(draft); viewer.park.playTest(sel); };
     const pm = $('#pMinus'), pp = $('#pPlus'); if (pm) pm.onclick = () => { draft.power = Math.max(0, draft.power - 1); afterEdit(true); }; if (pp) pp.onclick = () => { draft.power = Math.min(5, draft.power + 1); afterEdit(true); };
     const sk = $('#uShake'); if (sk) sk.onclick = () => ShakeCharge.open(kwh => ctx.onShake && ctx.onShake(kwh));
@@ -196,11 +208,14 @@ const ParkUI = (function () {
     set('vIn', `${f1(R.vIn)} <small>m/s</small>`);
     set('pg', `<span class="${R.peakG > K.comfort.strong ? 'down' : ''}">${f1(R.peakG)}</span> <small>g</small>`);
     set('vEnd', `<span class="${R.crash ? 'down' : 'up'}">${f1(R.vEnd)}</span> / ${K.safeEnd} <small>m/s</small>`);
-    const fe = $('#feel'); if (fe) { fe.className = 'feel ' + F.tone; fe.innerHTML = `<b>${F.label}</b><span>${F.tip} · 인기 ${R.thrill}/10</span>`; }
+    const fe = $('#feel'); if (fe) { fe.className = 'feel ' + F.tone; fe.innerHTML = `<b>${F.label}</b><span>${F.tip}</span>`; }
+    set('stars', `<span>인기</span><i style="--p:${Math.round(R.thrill / THRILL_MAX * 100)}%"></i><b>${R.thrill} / ${THRILL_MAX}</b>${s.launch ? '<em>🚀 발사 +1.5</em>' : ''}${s.loop ? `<em>🌀 루프 +${f1(1.5 + s.loop / 10)}</em>` : ''}`);
+    if (R.loop) set('loopInfo', `꼭대기 속도 <b class="${R.loop.stall ? 'down' : 'up'}">${f1(R.loop.vTop)} m/s</b> (떨어지지 않으려면 ≥ ${f1(R.loop.vNeed)} m/s, v² ≥ g·r) · 루프 바닥에서 몸을 누르는 힘 <b class="${R.loop.gBottom > LOOP_MAXG ? 'down' : ''}">${f1(R.loop.gBottom)} g</b> (${LOOP_MAXG} g 넘으면 너무 셈)`);
+    else set('loopInfo', '루프를 달면 인기가 크게 오르지만, 꼭대기에서 충분히 빨라야 해요(역학적 에너지 보존).');
     set('vmin', s.kind === 'drop' && R.c > 0 ? `자석만으로 낼 수 있는 가장 느린 속도 g÷c = ${f1(R.vMin)} m/s` : s.kind === 'coaster' && R.c > 0 ? `자석만으로 멈추는 데 필요한 거리 ${f1(R.distStop)} m` : '');
     set('sci', s.mat === 'pl' ? '플라스틱은 전기가 통하지 않아 유도 전류가 흐르지 못해요. 그래서 자석이 지나가도 제동이 걸리지 않아요.'
       : `탑승차의 자석이 ${MATERIALS[s.mat].name}을 지나면 판을 지나는 자기장이 변해 유도 전류가 흘러요. 이 전류가 만든 자기장이 운동을 방해해 제동이 걸리고, 운동 에너지는 판의 열에너지로 바뀌어요. 빠를수록 세게, 느릴수록 약하게 걸려서 마지막은 ${s.kind === 'drop' ? '유압 완충기' : '승강장 브레이크'}가 받아요.`);
-    set('perRide', `한 번 운행: 끌어올리기 ${f1(R.kwh.lift)} kWh${s.regen ? ` · 되찾기 ${f1(R.kwh.regen)} kWh` : ''}`);
+    set('perRide', `한 번 운행: ${s.launch ? '발사' : '끌어올리기'} ${f1(R.kwh.lift)} kWh${s.regen ? ` · 되찾기 ${f1(R.kwh.regen)} kWh` : ''} · 질량 ${(R.m / 1000).toFixed(1)} t`);
     drawChart(R);
     clearTimeout(chartT); chartT = setTimeout(refreshEnergy, 250);
   }
@@ -223,14 +238,15 @@ const ParkUI = (function () {
     const left = [['전력망', E.grid, '#8B85C1'], ['태양광', E.solar, '#FFD166'], ['배터리', E.battery, '#4ADE80'], ['흔들기', E.shake, '#5CC8FF'], ['되찾은 전기', E.regen, '#8CE7FF']].filter(x => x[1] > 0.05);
     const right = [['끌어올린 위치 에너지 → 브레이크 열', E.heat, '#E08A4B'], ['되찾아 다시 씀', E.regen, '#8CE7FF']].filter(x => x[1] > 0.05);
     return `<div class="card result"><div class="eyebrow">${W.icon} ${W.name} ${(r.events || []).map(k => EVENTS[k] ? EVENTS[k].icon + ' ' + EVENTS[k].name : '').join(' ')}</div><h2>오늘의 영업 결과</h2>
-      <div class="kpis"><div><small>손님</small><b>${r.riders.toLocaleString('ko-KR')}</b></div><div><small>수입</small><b>${won(r.income)}</b></div><div><small>전기·벌금·수리</small><b>${won(r.powerCost + r.fines + r.repair)}</b></div><div><small>이익</small><b class="${r.profit >= 0 ? 'up' : 'down'}">${won(r.profit)}</b></div></div>
+      <div class="kpis"><div><small>손님</small><b>${r.riders.toLocaleString('ko-KR')}</b></div><div><small>수입</small><b>${won(r.income)}</b></div><div><small>전기·벌금·수리</small><b>${won(r.powerCost + r.fines + r.repair)}</b></div>${r.missionBonus ? `<div><small>의뢰 보너스</small><b class="up">+${won(r.missionBonus)}</b></div>` : ''}<div><small>이익</small><b class="${r.profit >= 0 ? 'up' : 'down'}">${won(r.profit)}</b></div></div>
       <div class="eyebrow">에너지 흐름 (kWh)</div>
       <div class="flow"><div class="col">${left.map(([n, v, c]) => `<div class="bar" style="background:${c}"><span>${n}</span><span>${f1(v)}</span></div>`).join('') || '<span class="muted">없음</span>'}</div>
         <div class="mid">→ 끌어올리기 ${f1(E.lift)} →</div>
         <div class="col">${right.map(([n, v, c]) => `<div class="bar" style="background:${c}"><span>${n}</span><span>${f1(v)}</span></div>`).join('')}</div></div>
       <p class="muted" style="font-size:13px">전력망 전기 ${f1(E.grid)} kWh → 이산화 탄소 약 ${f1(r.co2)} kg · 되찾은 전기 비율 ${E.lift ? Math.round(E.regen / E.lift * 100) : 0}%</p>
       ${r.notes.length ? `<ul class="notes">${r.notes.map(n => `<li class="${n.tone}">${esc(n.t)}</li>`).join('')}</ul>` : ''}
-      <div class="ridelist">${r.rides.map(x => `<div><span>${KINDS[x.kind].icon} ${x.i + 1}번</span><span>${FEEL[x.feel].label} · 감속 ${f1(x.peakG)}g · 끝 속도 ${f1(x.vEnd)} m/s</span><b class="num">${x.riders.toLocaleString('ko-KR')}명</b></div>`).join('')}</div>
+      ${(r.missions || []).length ? `<div class="missions done">${r.missions.map(x => { const M = MISSIONS[x.k]; return M ? `<div class="mi ${x.ok ? 'ok' : 'no'}"><span class="ic">${M.icon}</span><div><b>${M.name}</b><small>${esc(missionText(x.k, r.day == null ? ctx.day : r.day))}</small></div><span class="st">${x.ok ? `✅ +${won(x.reward)}` : '❌'}</span></div>` : ''; }).join('')}</div>` : ''}
+      <div class="ridelist">${r.rides.map(x => `<div><span>${KINDS[x.kind].icon} ${x.i + 1}번${x.name ? ` 「${esc(x.name)}」` : ''}</span><span>${FEEL[x.feel].label} · 감속 ${f1(x.peakG)}g · 끝 속도 ${f1(x.vEnd)} m/s</span><b class="num">${x.riders.toLocaleString('ko-KR')}명</b>${x.review ? `<q>${esc(x.review)}</q>` : ''}</div>`).join('')}</div>
       ${r.quizBonus ? `<p class="up" style="margin-top:6px">📡 과학 퀴즈 보너스 +${won(r.quizBonus)}</p>` : ''}</div>`;
   }
   function quizHTML(q) {
@@ -242,9 +258,9 @@ const ParkUI = (function () {
   function endHTML() {
     const c = ctx, score = finalScore(c.money, c.park);
     const hist = c.hist || [];
-    const regen = hist.reduce((a, r) => a + (r.energy ? r.energy.regen : 0), 0), lift = hist.reduce((a, r) => a + (r.energy ? r.energy.lift : 0), 0), co2 = hist.reduce((a, r) => a + (r.co2 || 0), 0), riders = hist.reduce((a, r) => a + (r.riders || 0), 0), crashes = hist.reduce((a, r) => a + r.rides.filter(x => x.feel === 'crash').length, 0);
+    const regen = hist.reduce((a, r) => a + (r.energy ? r.energy.regen : 0), 0), lift = hist.reduce((a, r) => a + (r.energy ? r.energy.lift : 0), 0), co2 = hist.reduce((a, r) => a + (r.co2 || 0), 0), riders = hist.reduce((a, r) => a + (r.riders || 0), 0), crashes = hist.reduce((a, r) => a + r.rides.filter(x => x.feel === 'crash' || x.feel === 'stall').length, 0), mis = hist.reduce((a, r) => a + (r.missions || []).filter(x => x.ok).length, 0);
     return `<div class="card final"><div class="eyebrow">${c.days}일 영업 끝</div><div class="score">${score.toLocaleString('ko-KR')}</div><p class="muted">최종 점수 = 돈 ${won(c.money)} + 시설 값의 절반 ${won(parkValue(c.park) * 0.5)}</p>
-      <div class="kpis" style="text-align:left"><div><small>총 손님</small><b>${riders.toLocaleString('ko-KR')}</b></div><div><small>되찾은 전기</small><b>${Math.round(regen)} kWh</b><small>${lift ? Math.round(regen / lift * 100) : 0}%</small></div><div><small>이산화 탄소</small><b>${Math.round(co2)} kg</b></div><div><small>충돌 사고</small><b class="${crashes ? 'down' : 'up'}">${crashes}번</b></div></div>
+      <div class="kpis" style="text-align:left"><div><small>총 손님</small><b>${riders.toLocaleString('ko-KR')}</b></div><div><small>되찾은 전기</small><b>${Math.round(regen)} kWh</b><small>${lift ? Math.round(regen / lift * 100) : 0}%</small></div><div><small>이산화 탄소</small><b>${Math.round(co2)} kg</b></div><div><small>충돌 사고</small><b class="${crashes ? 'down' : 'up'}">${crashes}번</b></div><div><small>의뢰 달성</small><b>${mis} / ${hist.length * 2}</b></div></div>
       <p class="sci" style="text-align:left">돌아보기: 자석 브레이크는 운동 에너지를 열로 바꾸고, 발전 코일은 그중 일부를 전기로 되찾았어요. 끌어올리는 데 쓴 전기 중 몇 %를 되찾았나요? 정전 날 자석 브레이크가 멈추지 않은 까닭을 전자기 유도로 설명해 보세요.</p>
       ${c.onRestart ? `<div class="foot" style="justify-content:center;margin-top:10px"><button class="btn hot lg" id="uRestart">새 놀이공원 만들기</button></div>` : ''}</div>`;
   }
@@ -292,14 +308,15 @@ const Solo = (function () {
     const Q = quizFor(S.code, S.day), qa = S.quiz[S.day];
     ParkUI.render(root, {
       mode: 'solo', title: '자석 브레이크 놀이공원', day: S.day, days: S.days, money: S.money, rep: S.rep, battery: S.battery,
-      weather: dayWeather(S.code, S.day), events: evToday(), park: S.park, phase: S.phase, editable: S.phase === 'design',
+      weather: dayWeather(S.code, S.day), events: evToday(), park: S.park, phase: S.phase, editable: S.phase === 'design', missions: dayMissions(S.code, S.day),
       lastRes: S.hist[S.day], shake: S.shake[S.day] == null ? null : S.shake[S.day], hist: S.hist, backHref: '#',
       quiz: S.phase === 'quiz' ? { Q, mine: qa, reveal: qa != null } : (S.phase === 'result' ? true : null),
       onShake(k) { S.shake[S.day] = k; save(); toast(`⚡ ${f1(k)} kWh 충전!`, 'good'); draw(); },
       onStart(p, cost) {
         S.money -= cost; S.park = p; S.phase = 'run'; save(); draw();
         setTimeout(() => {
-          const r = runDay(S.park, S, { weather: dayWeather(S.code, S.day), events: evToday(), shakeKWh: S.shake[S.day] || 0 });
+          const r = runDay(S.park, S, { weather: dayWeather(S.code, S.day), events: evToday(), shakeKWh: S.shake[S.day] || 0, missions: dayMissions(S.code, S.day), day: S.day });
+          r.day = S.day;
           S.hist[S.day] = r; S.money = r.money; S.rep = r.rep; S.battery = r.battery; S.phase = 'result'; save(); draw();
         }, 6500);
       },

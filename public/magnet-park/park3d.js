@@ -17,6 +17,14 @@ const Park3D = (function () {
     x.fillStyle = '#14213D'; x.font = 'bold 72px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 64, 68);
     const s = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(c), depthWrite: false })); s.scale.set(2.4, 2.4, 1); return s;
   }
+  // 놀이기구 이름 표지판
+  function nameSign(text) {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 112; const x = c.getContext('2d');
+    x.font = 'bold 60px sans-serif'; const w = Math.min(500, x.measureText(text).width + 56);
+    x.fillStyle = 'rgba(20,16,44,.88)'; x.beginPath(); x.moveTo((512 - w) / 2 + 24, 8); x.arcTo((512 + w) / 2, 8, (512 + w) / 2, 104, 24); x.arcTo((512 + w) / 2, 104, (512 - w) / 2, 104, 24); x.arcTo((512 - w) / 2, 104, (512 - w) / 2, 8, 24); x.arcTo((512 - w) / 2, 8, (512 + w) / 2, 8, 24); x.fill();
+    x.fillStyle = '#FFD166'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, 256, 60);
+    const sp = new T.Sprite(new T.SpriteMaterial({ map: new T.CanvasTexture(c), depthWrite: false, depthTest: false })); sp.scale.set(9, 2, 1); sp.renderOrder = 5; return sp;
+  }
   const SKY = { sun: [0x7FB8E8, 0xD9ECF7], cloud: [0x8E9BA8, 0xCBD3DA], rain: [0x5E6B78, 0x9AA6B1], night: [0x101826, 0x2A3550] };
 
   // ---------- 놀이기구 모델 ----------
@@ -36,7 +44,8 @@ const Park3D = (function () {
     g.add(cyl(3.4, 3.6, 0.3, 16, mat(0xC9CED4), 0, 0.15, 0));
     // 탑승차: 기둥을 감싼 고리 + 좌석 + 영구 자석
     const car = new T.Group();
-    car.add(mesh(geo('dropRing', () => new T.TorusGeometry(1.9, 0.45, 6, 16)), mat(0x2B6CB0), 0, 0, 0)).rotation.x = Math.PI / 2;
+    car.add(mesh(geo('dropRing', () => new T.TorusGeometry(1.9, 0.45, 6, 16)), mat(r.body === 'light' ? 0xC7D0DA : 0x2B6CB0), 0, 0, 0)).rotation.x = Math.PI / 2;
+    if (r.launch) for (let i = 0; i < 5; i++) g.add(mesh(geo('coil', () => new T.TorusGeometry(1.25, 0.12, 5, 14)), mat(0x5CC8FF, { emissive: 0x1B4D66 }), 0, h * (0.2 + i * 0.12), 0)).rotation.x = Math.PI / 2;
     const n = Math.min(12, Math.round(r.seats / 2));
     for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; const s = box(0.6, 0.8, 0.5, mat(0xF6C744), Math.cos(a) * 2.5, 0.2, Math.sin(a) * 2.5); s.rotation.y = -a; car.add(s); }
     for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; const m = box(0.5, 0.9, 0.5, mat(0x30343A), Math.cos(a) * 1.3, -0.3, Math.sin(a) * 1.3); m.rotation.y = -a; car.add(m); }
@@ -47,17 +56,26 @@ const Park3D = (function () {
   function coasterModel(r) {
     const g = new T.Group(), h = Math.max(2.5, r.H * S);
     const pts = [[-6, 0.6, 5], [-6, 0.6, 1], [-5, h * 0.7, -2.5], [-3.5, h, -4.5], [-1.5, h * 0.95, -5], [1, h * 0.4, -4], [3.5, 0.7, -2], [5.5, 0.7, 0.5], [6, 0.7, 3], [5, 0.7, 5.5], [2, 0.6, 6], [-2, 0.6, 6], [-5, 0.6, 5.8]];
+    if (r.loop) {
+      // [3.5,−2] → [5.5,0.5] 사이에 수직 루프(옆으로 조금씩 비켜 가며 한 바퀴)
+      const a = new T.Vector3(3.5, 0.7, -2), b = new T.Vector3(5.5, 0.7, 0.5), d = b.clone().sub(a).normalize(), side = new T.Vector3(-d.z, 0, d.x);
+      const mid = a.clone().add(b).multiplyScalar(0.5), R = Math.min(2.6, r.loop * S * 0.9), loopPts = [];
+      for (let k = 1; k <= 7; k++) { const ph = k / 8 * Math.PI * 2; const p = mid.clone().addScaledVector(d, R * Math.sin(ph) * 0.8).addScaledVector(side, (k / 8 - 0.5) * 1.4); p.y = 0.7 + R * (1 - Math.cos(ph)); loopPts.push([p.x, p.y, p.z]); }
+      pts.splice(7, 0, ...loopPts);
+    }
     const curve = new T.CatmullRomCurve3(pts.map(p => new T.Vector3(p[0], p[1], p[2])), true, 'catmullrom', 0.2);
+    const uOf = (x, y, z) => { const v = new T.Vector3(x, y, z); let best = 0, bd = 1e9; for (let i = 0; i <= 400; i++) { const dd = curve.getPointAt(i / 400).distanceToSquared(v); if (dd < bd) { bd = dd; best = i / 400; } } return best; };
     const rail = new T.Mesh(new T.TubeGeometry(curve, 160, 0.22, 5, true), mat(0xE5484D));
     g.add(rail);
     for (let i = 0; i < 26; i++) { const p = curve.getPointAt(i / 26); if (p.y > 0.9) g.add(cyl(0.12, 0.16, p.y, 5, mat(0xF2F2EE), p.x, p.y / 2, p.z)); }
     // 수평 자석 브레이크 구간(구리 날개)
     const copperMat = new T.MeshPhongMaterial({ color: 0xB8733A, emissive: 0x000000, flatShading: true, shininess: 40, specular: 0x553311 });
-    const b0 = 0.6, b1 = 0.86;
+    const b0 = uOf(5.5, 0.7, 0.5) + 0.01, b1 = uOf(-2, 0.6, 6);
     for (let i = 0; i <= 10; i++) { const p = curve.getPointAt(b0 + (b1 - b0) * i / 10); g.add(box(0.12, 0.5, 0.12, copperMat, p.x, p.y - 0.35, p.z)); }
     g.add(box(3, 0.3, 2, mat(0xC9CED4), -6, 0.15, 3.5)); // 승강장
     const train = new T.Group(), cars = [];
-    for (let i = 0; i < r.cars; i++) { const c = new T.Group(); c.add(box(0.9, 0.5, 0.9, mat(0x2B6CB0), 0, 0.3, 0)); c.add(box(0.7, 0.3, 0.3, mat(0xF6C744), 0, 0.65, 0)); train.add(c); cars.push(c); }
+    if (r.launch) for (let i = 0; i < 6; i++) { const p = curve.getPointAt(0.08 + i * 0.012); g.add(box(0.5, 0.12, 0.5, mat(0x5CC8FF, { emissive: 0x1B4D66 }), p.x, p.y - 0.25, p.z)); }
+    for (let i = 0; i < r.cars; i++) { const c = new T.Group(); c.add(box(0.9, 0.5, 0.9, mat(r.body === 'light' ? 0xC7D0DA : 0x2B6CB0), 0, 0.3, 0)); c.add(box(0.7, 0.3, 0.3, mat(0xF6C744), 0, 0.65, 0)); train.add(c); cars.push(c); }
     g.add(train);
     g.userData = { curve, train, cars, copperMat, h, kind: 'coaster', u0: 0.08, b0, b1 };
     placeTrain(g, 0.05);
@@ -119,6 +137,7 @@ const Park3D = (function () {
         slotPads[i].material = mat(0xD8DEE4);
         const m = s.kind === 'drop' ? dropModel(s) : s.kind === 'coaster' ? coasterModel(s) : s.kind === 'solar' ? solarModel() : batteryModel();
         const [x, z] = SLOT_POS[i]; m.position.set(x, 0.2, z); root.add(m);
+        if (s.name) { const sg = nameSign(s.name); sg.position.set(x, (s.kind === 'drop' ? s.H * S + 4 : Math.max(2.5, s.H * S) + 3), z); root.add(sg); }
         items.push({ g: m, s, sim: (s.kind === 'drop' || s.kind === 'coaster') && typeof simRide === 'function' ? simRide(s) : null });
       });
     }
@@ -168,7 +187,7 @@ const Park3D = (function () {
           if (active) {
             const s = sampleAt(it.sim.samples, play.t);
             let u;
-            if (s.phase === 'hill') u = 0.2 + 0.4 * s.x; else if (s.phase === 'brake') u = U.b0 + (U.b1 - U.b0) * Math.min(1, s.x - 1); else u = U.b1 + 0.02;
+            if (s.phase === 'hill') u = 0.2 + (U.b0 - 0.2) * s.x; else if (s.phase === 'brake') u = U.b0 + (U.b1 - U.b0) * Math.min(1, s.x - 1); else u = U.b1 + 0.02;
             U.uu = u; placeTrain(it.g, u);
             const heat = Math.min(1, (s.g || 0) / 2); U.copperMat.emissive.setRGB(heat * 0.9, heat * 0.35, 0);
           } else { U.copperMat.emissive.multiplyScalar(0.94); U.uu = ((U.uu || 0.05) + dt * 0.03) % 1; placeTrain(it.g, U.uu); }
