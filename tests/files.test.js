@@ -10,7 +10,7 @@ function resolve(from, ref) {
   return ref.startsWith('/') ? path.join(PUB, ref) : path.join(path.dirname(from), ref);
 }
 
-for (const page of ['index.html', 'energy-city/index.html', 'century/index.html']) {
+for (const page of ['index.html', 'energy-city/index.html', 'century/index.html', 'magnet-park/index.html']) {
   test(`${page}: 참조 파일이 모두 있다`, () => {
     const file = path.join(PUB, page), html = fs.readFileSync(file, 'utf8');
     const refs = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map((m) => m[1]).filter((r) => !r.startsWith('mailto:'));

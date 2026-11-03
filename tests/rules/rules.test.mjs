@@ -114,3 +114,45 @@ test('새 활동: 예측·지원·구조·정상 회의·미니게임은 학생 
   await assertSucceeds(tA().ref('rooms/1111/scores/s-uid').set({ pred: 1 }));
   await assertFails(tB().ref('rooms/1111/scores/s-uid').set({ pred: 1 }));
 });
+
+// ===== 자석 브레이크 놀이공원(parks) =====
+const pmeta = owner => ({ title: '자석 브레이크 놀이공원', owner, ownerEmail: 'x', created: 1, order: ['g1', 'g2'], groups: { g1: { name: '1모둠' }, g2: { name: '2모둠' } }, days: 5 });
+async function seedPark() {
+  await env.withSecurityRulesDisabled(async ctx => {
+    const db = ctx.database();
+    await db.ref('parks/7777/meta').set(pmeta('a-uid'));
+    await db.ref('parks/7777/live').set({ sub: 'design', day: 0 });
+    await db.ref('parks/7777/res/g1').set({ money: 3000, rep: 1, battery: 0 });
+  });
+}
+
+test('놀이공원: 교사는 자기 수업만 진행, 남의 수업은 못 건드림', async () => {
+  await seedPark();
+  await assertSucceeds(tB().ref('parks/8888/meta').set(pmeta('b-uid')));
+  await assertSucceeds(tA().ref('parks/7777/live/sub').set('run'));
+  await assertSucceeds(tA().ref('parks/7777/res/g1/money').set(2500));
+  await assertSucceeds(tA().ref('parks/7777/scores/s-uid').set({ quiz: 1 }));
+  await assertSucceeds(tA().ref('parks/7777/players/s-uid').remove());
+  await assertFails(tB().ref('parks/7777/live/sub').set('end'));
+  await assertFails(tB().ref('parks/7777/meta/owner').set('b-uid'));
+  await assertFails(stranger().ref('parks/9998/meta').set(pmeta('x-uid')));
+  await assertFails(student().ref('parks/9998/meta').set(pmeta('s-uid')));
+});
+
+test('놀이공원: 학생은 자기 uid 자리(참여·설계·흔들기·퀴즈)만 쓴다', async () => {
+  await seedPark();
+  const s = student();
+  await assertSucceeds(s.ref('parks/7777/live').once('value'));
+  await assertSucceeds(s.ref('parks/7777/players/s-uid').set({ name: '하늘', g: 'g1', t: 1 }));
+  await assertFails(s.ref('parks/7777/players/s-uid').set({ name: '하늘', g: 'g9', t: 1 })); // 없는 모둠
+  await assertSucceeds(s.ref('parks/7777/design/s-uid').set({ g: 'g1', day: 0, slots: { 1: { kind: 'drop', H: 60 } }, power: 2, ready: 0 }));
+  await assertFails(s.ref('parks/7777/design/s-uid').set({ g: 'g1', day: 0, power: 9 }));
+  await assertSucceeds(s.ref('parks/7777/shake/0/s-uid').set(7.5));
+  await assertFails(s.ref('parks/7777/shake/0/s-uid').set(99));
+  await assertSucceeds(s.ref('parks/7777/quiz/0/s-uid').set({ a: 2, g: 'g1' }));
+  await assertFails(s.ref('parks/7777/quiz/0/other').set({ a: 2, g: 'g1' }));
+  await assertFails(s.ref('parks/7777/design/other').set({ g: 'g1', day: 0 }));
+  await assertFails(s.ref('parks/7777/res/g1/money').set(99999));
+  await assertFails(s.ref('parks/7777/scores/s-uid').set({ quiz: 99 }));
+  await assertFails(s.ref('parks/7777/live/sub').set('end'));
+});
