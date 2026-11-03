@@ -28,62 +28,123 @@ const Park3D = (function () {
   const SKY = { sun: [0x7FB8E8, 0xD9ECF7], cloud: [0x8E9BA8, 0xCBD3DA], rain: [0x5E6B78, 0x9AA6B1], night: [0x101826, 0x2A3550] };
 
   // ---------- 놀이기구 모델 ----------
+  // 주의: Object3D.add()는 부모를 돌려준다. 회전은 꼭 자식 객체에 따로 준 뒤 add 한다.
+  const copperNew = () => new T.MeshPhongMaterial({ color: 0xC47A3C, emissive: 0x000000, flatShading: true, shininess: 70, specular: 0x7A5030 });
+  const SKIN = [0xF1C7A0, 0xD9A47A, 0xB57E57, 0xF5D3B5], SHIRT = [0xF26B5B, 0x3FA7D6, 0xF6C744, 0x7BD389, 0xC86BFA, 0xFFFFFF, 0x2E3A59, 0xFF9F43];
+  function shadowDisc(r) { const m = mesh(geo('sh' + r, () => new T.CircleGeometry(r, 28)), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16, depthWrite: false }), 0, 0.04, 0); m.rotation.x = -Math.PI / 2; return m; }
+  function ringMesh(R, tube, m, y, seg) { const o = mesh(geo(`t${R}|${tube}|${seg || 32}`, () => new T.TorusGeometry(R, tube, 6, seg || 32)), m, 0, y, 0); o.rotation.x = Math.PI / 2; return o; }
+  // 탑승객 1명(앉은 자세, +z가 앞)
+  function rider(k, legs) {
+    const p = new T.Group();
+    p.add(box(0.26, 0.34, 0.18, mat(SHIRT[k % SHIRT.length]), 0, 0.2, -0.02));
+    p.add(mesh(geo('head', () => new T.SphereGeometry(0.11, 8, 6)), mat(SKIN[k % SKIN.length]), 0, 0.48, 0));
+    if (legs) { p.add(box(0.09, 0.42, 0.1, mat(0x2E3A59), -0.07, -0.22, 0.12)); p.add(box(0.09, 0.42, 0.1, mat(0x2E3A59), 0.07, -0.22, 0.12)); }
+    return p;
+  }
   function dropModel(r) {
-    const g = new T.Group(), h = r.H * S, white = mat(0xF2F2EE), red = mat(0xE5484D), steel = mat(0x8A939C);
-    const copperMat = new T.MeshPhongMaterial({ color: 0xB8733A, emissive: 0x000000, flatShading: true, shininess: 40, specular: 0x553311 });
-    g.add(cyl(0.9, 1.3, h, 8, white, 0, h / 2, 0));
-    for (let i = 1; i < 6; i++) g.add(cyl(0.95, 0.95, 0.25, 8, red, 0, h * i / 6, 0));
-    g.add(cyl(1.6, 1.0, 1.2, 8, red, 0, h + 0.6, 0));
-    g.add(mesh(geo('crown', () => new T.ConeGeometry(0.6, 2, 8)), red, 0, h + 2.2, 0));
-    // 아래쪽 자석 구간: 기둥에 세로로 붙은 구리판
-    const brakeH = r.L * S, by = (5 * S) + brakeH / 2;
-    const strips = [];
-    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; const st = box(0.18, brakeH, 0.7, copperMat, Math.cos(a) * 1.05, by, Math.sin(a) * 1.05); st.rotation.y = -a; g.add(st); strips.push(st); }
-    // 바닥 유압 완충기
-    g.add(cyl(1.8, 2.0, 5 * S, 10, steel, 0, 2.5 * S, 0));
-    g.add(cyl(3.4, 3.6, 0.3, 16, mat(0xC9CED4), 0, 0.15, 0));
-    // 탑승차: 기둥을 감싼 고리 + 좌석 + 영구 자석
-    const car = new T.Group();
-    car.add(mesh(geo('dropRing', () => new T.TorusGeometry(1.9, 0.45, 6, 16)), mat(r.body === 'light' ? 0xC7D0DA : 0x2B6CB0), 0, 0, 0)).rotation.x = Math.PI / 2;
-    if (r.launch) for (let i = 0; i < 5; i++) g.add(mesh(geo('coil', () => new T.TorusGeometry(1.25, 0.12, 5, 14)), mat(0x5CC8FF, { emissive: 0x1B4D66 }), 0, h * (0.2 + i * 0.12), 0)).rotation.x = Math.PI / 2;
-    const n = Math.min(12, Math.round(r.seats / 2));
-    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; const s = box(0.6, 0.8, 0.5, mat(0xF6C744), Math.cos(a) * 2.5, 0.2, Math.sin(a) * 2.5); s.rotation.y = -a; car.add(s); }
-    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; const m = box(0.5, 0.9, 0.5, mat(0x30343A), Math.cos(a) * 1.3, -0.3, Math.sin(a) * 1.3); m.rotation.y = -a; car.add(m); }
-    car.position.y = h - 1; g.add(car);
-    g.userData = { car, strips, copperMat, h, kind: 'drop' };
+    const g = new T.Group(), h = r.H * S, light = r.body === 'light';
+    const white = mat(0xF4F4F0), red = mat(0xE5484D), steel = mat(0x8A939C), dark = mat(0x2E333A), concrete = mat(0xC9CED4);
+    const copperMat = copperNew(), ledMat = new T.MeshPhongMaterial({ color: 0xFFF1B8, emissive: 0x806A2A, flatShading: true }), beacon = new T.MeshPhongMaterial({ color: 0xFF3B3B, emissive: 0xAA0000 });
+    const yOf = m => m * S + 0.4; // 시뮬레이션 높이(m) → 장면 높이
+    g.add(shadowDisc(4.6));
+    // 승강장·안전선·울타리
+    g.add(cyl(4.1, 4.3, 0.35, 32, concrete, 0, 0.175, 0));
+    g.add(cyl(3.0, 3.0, 0.02, 32, mat(0xFFD166), 0, 0.36, 0)); g.add(cyl(2.9, 2.9, 0.03, 32, concrete, 0, 0.365, 0));
+    for (let i = 0; i < 24; i++) { if (i === 18 || i === 19) continue; const a = i / 24 * Math.PI * 2; g.add(box(0.05, 0.5, 0.05, steel, Math.cos(a) * 4.0, 0.6, Math.sin(a) * 4.0)); }
+    g.add(ringMesh(4.0, 0.025, steel, 0.84, 40));
+    // 탑: 흰 기둥 + 안내 레일 3개 + 빨간 띠 + LED 줄
+    g.add(cyl(0.62, 0.82, h, 14, white, 0, h / 2 + 0.35, 0));
+    for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; const rl = box(0.12, h, 0.14, steel, Math.cos(a) * 0.74, h / 2 + 0.35, Math.sin(a) * 0.74); rl.rotation.y = -a; g.add(rl); const ld = box(0.05, h * 0.92, 0.05, ledMat, Math.cos(a + 1.05) * 0.7, h * 0.48 + 0.35, Math.sin(a + 1.05) * 0.7); g.add(ld); }
+    for (let k = 1; k < 8; k++) g.add(cyl(0.76, 0.76, 0.16, 14, red, 0, 0.35 + h * k / 8, 0));
+    // 꼭대기 기계실 + 항공 장애등
+    g.add(cyl(1.25, 1.15, 1.2, 14, white, 0, h + 0.95, 0));
+    g.add(cyl(1.3, 1.3, 0.14, 14, red, 0, h + 1.5, 0));
+    g.add(mesh(geo('roof', () => new T.ConeGeometry(1.25, 0.8, 14)), red, 0, h + 1.97, 0));
+    g.add(cyl(0.04, 0.04, 1.2, 4, steel, 0, h + 2.9, 0));
+    g.add(mesh(geo('beacon', () => new T.SphereGeometry(0.14, 8, 6)), beacon, 0, h + 3.55, 0));
+    // 자석 브레이크 구간: 탑에 세로로 붙은 구리 날개 8장(높이 5 m ~ 5+L m)
+    const b0 = yOf(5), b1 = yOf(5 + r.L), bh = b1 - b0;
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2; const fin = box(0.05, bh, 0.42, copperMat, Math.cos(a) * 1.0, (b0 + b1) / 2, Math.sin(a) * 1.0); fin.rotation.y = -a; g.add(fin); }
+    // 바닥 유압 완충기 4개
+    for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4; g.add(cyl(0.18, 0.2, b0 - 0.35, 8, steel, Math.cos(a) * 1.05, (b0 + 0.35) / 2, Math.sin(a) * 1.05)); g.add(cyl(0.1, 0.1, 0.25, 8, mat(0xE8ECEF, { shininess: 80 }), Math.cos(a) * 1.05, b0 + 0.1, Math.sin(a) * 1.05)); }
+    // 전자기 발사 코일(탑 아래쪽을 감싼 파란 고리)
+    if (r.launch) for (let k = 0; k < 6; k++) g.add(ringMesh(0.95, 0.09, mat(0x5CC8FF, { emissive: 0x1B4D66 }), b1 + 0.4 + k * Math.max(0.25, (h * 0.45 - bh) / 6), 18));
+    // 탑승차(곤돌라): 고리 틀 + 영구 자석 + 바깥을 보는 좌석
+    const car = new T.Group(), frame = mat(light ? 0xC7D0DA : 0x2B6CB0, { shininess: light ? 60 : 8 });
+    car.add(ringMesh(1.95, 0.13, frame, 0.05, 40));
+    car.add(ringMesh(1.28, 0.16, frame, 0.0, 24));
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; const sp = box(0.7, 0.1, 0.12, frame, Math.cos(a) * 1.62, 0.02, Math.sin(a) * 1.62); sp.rotation.y = -a; car.add(sp); }
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2 + Math.PI / 8; const m = box(0.22, 0.55, 0.26, dark, Math.cos(a) * 1.18, -0.05, Math.sin(a) * 1.18); m.rotation.y = -a; car.add(m); const n = box(0.23, 0.12, 0.27, k % 2 ? mat(0x3D7BFF) : red, Math.cos(a) * 1.18, 0.26, Math.sin(a) * 1.18); n.rotation.y = -a; car.add(n); }
+    const n = r.seats, R = 2.15;
+    for (let k = 0; k < n; k++) {
+      const a = k / n * Math.PI * 2, seat = new T.Group();
+      seat.add(box(0.36, 0.62, 0.08, mat(0x30343A), 0, 0.28, -0.16));     // 등받이
+      seat.add(box(0.36, 0.07, 0.3, mat(0x30343A), 0, -0.02, 0));         // 방석
+      seat.add(rider(k, true));
+      seat.add(box(0.32, 0.42, 0.06, mat(0xF6C744), 0, 0.28, 0.13));      // 어깨 안전바
+      seat.position.set(Math.cos(a) * R, 0.0, Math.sin(a) * R); seat.rotation.y = Math.PI / 2 - a;
+      car.add(seat);
+    }
+    car.position.y = yOf(0); g.add(car);
+    g.userData = { car, copperMat, ledMat, beacon, h, kind: 'drop', yOf, cyc: Math.random() * 20, Hm: r.H };
     return g;
   }
+  // 롤러코스터: 트랙 중심선 → 평행 이동 틀(위·옆 방향) → 레일 두 줄·침목·기둥·열차
   function coasterModel(r) {
-    const g = new T.Group(), h = Math.max(2.5, r.H * S);
+    const g = new T.Group(), h = Math.max(2.5, r.H * S), light = r.body === 'light';
+    g.add(shadowDisc(7.4));
     const pts = [[-6, 0.6, 5], [-6, 0.6, 1], [-5, h * 0.7, -2.5], [-3.5, h, -4.5], [-1.5, h * 0.95, -5], [1, h * 0.4, -4], [3.5, 0.7, -2], [5.5, 0.7, 0.5], [6, 0.7, 3], [5, 0.7, 5.5], [2, 0.6, 6], [-2, 0.6, 6], [-5, 0.6, 5.8]];
     if (r.loop) {
-      // [3.5,−2] → [5.5,0.5] 사이에 수직 루프(옆으로 조금씩 비켜 가며 한 바퀴)
       const a = new T.Vector3(3.5, 0.7, -2), b = new T.Vector3(5.5, 0.7, 0.5), d = b.clone().sub(a).normalize(), side = new T.Vector3(-d.z, 0, d.x);
       const mid = a.clone().add(b).multiplyScalar(0.5), R = Math.min(2.6, r.loop * S * 0.9), loopPts = [];
       for (let k = 1; k <= 7; k++) { const ph = k / 8 * Math.PI * 2; const p = mid.clone().addScaledVector(d, R * Math.sin(ph) * 0.8).addScaledVector(side, (k / 8 - 0.5) * 1.4); p.y = 0.7 + R * (1 - Math.cos(ph)); loopPts.push([p.x, p.y, p.z]); }
       pts.splice(7, 0, ...loopPts);
     }
     const curve = new T.CatmullRomCurve3(pts.map(p => new T.Vector3(p[0], p[1], p[2])), true, 'catmullrom', 0.2);
-    const uOf = (x, y, z) => { const v = new T.Vector3(x, y, z); let best = 0, bd = 1e9; for (let i = 0; i <= 400; i++) { const dd = curve.getPointAt(i / 400).distanceToSquared(v); if (dd < bd) { bd = dd; best = i / 400; } } return best; };
-    const rail = new T.Mesh(new T.TubeGeometry(curve, 160, 0.22, 5, true), mat(0xE5484D));
-    g.add(rail);
-    for (let i = 0; i < 26; i++) { const p = curve.getPointAt(i / 26); if (p.y > 0.9) g.add(cyl(0.12, 0.16, p.y, 5, mat(0xF2F2EE), p.x, p.y / 2, p.z)); }
-    // 수평 자석 브레이크 구간(구리 날개)
-    const copperMat = new T.MeshPhongMaterial({ color: 0xB8733A, emissive: 0x000000, flatShading: true, shininess: 40, specular: 0x553311 });
-    const b0 = uOf(5.5, 0.7, 0.5) + 0.01, b1 = uOf(-2, 0.6, 6);
-    for (let i = 0; i <= 10; i++) { const p = curve.getPointAt(b0 + (b1 - b0) * i / 10); g.add(box(0.12, 0.5, 0.12, copperMat, p.x, p.y - 0.35, p.z)); }
-    g.add(box(3, 0.3, 2, mat(0xC9CED4), -6, 0.15, 3.5)); // 승강장
-    const train = new T.Group(), cars = [];
-    if (r.launch) for (let i = 0; i < 6; i++) { const p = curve.getPointAt(0.08 + i * 0.012); g.add(box(0.5, 0.12, 0.5, mat(0x5CC8FF, { emissive: 0x1B4D66 }), p.x, p.y - 0.25, p.z)); }
-    for (let i = 0; i < r.cars; i++) { const c = new T.Group(); c.add(box(0.9, 0.5, 0.9, mat(r.body === 'light' ? 0xC7D0DA : 0x2B6CB0), 0, 0.3, 0)); c.add(box(0.7, 0.3, 0.3, mat(0xF6C744), 0, 0.65, 0)); train.add(c); cars.push(c); }
+    const N = 360, fr = curve.computeFrenetFrames(N, true);
+    const key = Math.abs(fr.normals[0].y) >= Math.abs(fr.binormals[0].y) ? 'normals' : 'binormals', sgn = fr[key][0].y >= 0 ? 1 : -1;
+    const F = []; for (let i = 0; i <= N; i++) { const t = fr.tangents[i].clone(), up = fr[key][i].clone().multiplyScalar(sgn), sd = new T.Vector3().crossVectors(up, t).normalize(); F.push({ p: curve.getPointAt(i / N), t, up, sd }); }
+    const uOf = (x, y, z) => { const v = new T.Vector3(x, y, z); let best = 0, bd = 1e9; F.forEach((f, i) => { const dd = f.p.distanceToSquared(v); if (dd < bd) { bd = dd; best = i / N; } }); return best; };
+    const rail = mat(0xE5484D, { shininess: 50 }), spineM = mat(0xF2F2EE), steel = mat(0x8A939C);
+    const tube = (fn, rad, m) => { const c = new T.CatmullRomCurve3(F.filter((_, i) => i % 3 === 0 && i < N).map(fn), true); g.add(new T.Mesh(new T.TubeGeometry(c, 260, rad, 6, true), m)); };
+    tube(f => f.p.clone().addScaledVector(f.sd, 0.3), 0.07, rail);
+    tube(f => f.p.clone().addScaledVector(f.sd, -0.3), 0.07, rail);
+    tube(f => f.p.clone().addScaledVector(f.up, -0.22), 0.11, spineM);
+    const basis = (f) => new T.Quaternion().setFromRotationMatrix(new T.Matrix4().makeBasis(f.sd, f.up, f.t));
+    for (let i = 0; i < N; i += 4) { const f = F[i], tie = box(0.72, 0.05, 0.1, steel, 0, 0, 0); tie.position.copy(f.p).addScaledVector(f.up, -0.12); tie.quaternion.copy(basis(f)); g.add(tie); }
+    // 기둥(위를 보는 구간만, 루프 안쪽 제외)
+    for (let i = 2; i < N; i += 6) { const f = F[i]; if (f.up.y < 0.35 || f.p.y < 0.9) continue; const y = f.p.y - 0.3; g.add(cyl(0.07, 0.11, y, 6, spineM, f.p.x, y / 2, f.p.z)); if (y > 2.5) { const br = box(0.05, 0.05, 0.9, steel, f.p.x, y * 0.5, f.p.z); br.quaternion.copy(basis(f)); br.position.y = y * 0.55; g.add(br); } }
+    // 자석 브레이크: 트랙 가운데 구리 날개
+    const copperMat = copperNew(), b0 = uOf(5.5, 0.7, 0.5) + 0.01, b1 = uOf(-2, 0.6, 6);
+    for (let u = b0; u <= b1; u += 0.006) { const f = F[Math.round(u * N) % N], fin = box(0.05, 0.3, 0.32, copperMat, 0, 0, 0); fin.position.copy(f.p).addScaledVector(f.up, -0.42); fin.quaternion.copy(basis(f)); g.add(fin); }
+    // 승강장(지붕 있는 플랫폼)
+    const st = uOf(-6, 0.6, 3), sf = F[Math.round(st * N)];
+    const plat = box(1.5, 0.35, 3.4, mat(0xC9CED4), 0, 0, 0); plat.position.copy(sf.p).addScaledVector(sf.sd, -1.15); plat.position.y = 0.2; plat.quaternion.copy(basis(sf)); g.add(plat);
+    for (const dz of [-1.5, 1.5]) for (const dx of [-0.65, 1.2]) { const post = cyl(0.06, 0.06, 2.1, 6, steel, 0, 0, 0); post.position.copy(sf.p).addScaledVector(sf.sd, -1.15 + dx).addScaledVector(sf.t, dz); post.position.y = 1.15; g.add(post); }
+    const roof = box(2.3, 0.12, 3.6, mat(0x3FA7D6), 0, 0, 0); roof.position.copy(sf.p).addScaledVector(sf.sd, -0.75); roof.position.y = 2.25; roof.quaternion.copy(basis(sf)); g.add(roof);
+    // 체인 리프트(첫 언덕 오르막의 검은 띠)
+    const uTop = uOf(-3.5, h, -4.5), uLift0 = uOf(-6, 0.6, 1);
+    for (let u = uLift0 + 0.01; u < uTop - 0.01; u += 0.008) { const f = F[Math.round(u * N) % N], ch = box(0.1, 0.04, 0.14, mat(0x1F2328), 0, 0, 0); ch.position.copy(f.p).addScaledVector(f.up, -0.06); ch.quaternion.copy(basis(f)); g.add(ch); }
+    if (r.launch) for (let u = st + 0.02; u < st + 0.09; u += 0.012) { const f = F[Math.round(u * N) % N], lp = box(0.5, 0.06, 0.4, mat(0x5CC8FF, { emissive: 0x1B4D66 }), 0, 0, 0); lp.position.copy(f.p).addScaledVector(f.up, -0.3); lp.quaternion.copy(basis(f)); g.add(lp); }
+    // 열차
+    const train = new T.Group(), cars = [], body = mat(light ? 0xC7D0DA : 0x2B6CB0, { shininess: light ? 60 : 10 });
+    for (let i = 0; i < r.cars; i++) {
+      const c = new T.Group();
+      c.add(box(0.78, 0.28, 0.95, body, 0, 0.22, 0));
+      if (i === 0) { const nose = box(0.78, 0.24, 0.3, mat(0xF6C744), 0, 0.24, 0.55); c.add(nose); }
+      for (const z of [-0.2, 0.22]) { for (const x of [-0.18, 0.18]) { const pr = rider(i * 4 + (z > 0 ? 2 : 0) + (x > 0 ? 1 : 0), false); pr.scale.setScalar(0.8); pr.position.set(x, 0.3, z); c.add(pr); } c.add(box(0.7, 0.05, 0.05, mat(0xF6C744), 0, 0.5, z + 0.14)); }
+      for (const x of [-0.32, 0.32]) for (const z of [-0.32, 0.32]) c.add(box(0.1, 0.14, 0.14, mat(0x1F2328), x, 0.02, z));
+      train.add(c); cars.push(c);
+    }
     g.add(train);
-    g.userData = { curve, train, cars, copperMat, h, kind: 'coaster', u0: 0.08, b0, b1 };
-    placeTrain(g, 0.05);
+    const L = curve.getLength();
+    g.userData = { curve, F, N, train, cars, copperMat, h, kind: 'coaster', b0, b1, uTop, uSt: st, uLift0, L, uu: st, dwell: Math.random() * 3, carGap: 1.05 / L };
+    placeTrain(g, st);
     return g;
   }
   function placeTrain(g, u) {
-    const { curve, cars } = g.userData;
-    cars.forEach((c, i) => { const uu = ((u - i * 0.022) % 1 + 1) % 1; const p = curve.getPointAt(uu), tg = curve.getTangentAt(uu); c.position.copy(p); c.lookAt(p.clone().add(tg)); });
+    const U = g.userData;
+    U.cars.forEach((c, i) => { const uu = ((u - i * U.carGap) % 1 + 1) % 1, f = U.F[Math.round(uu * U.N) % U.N]; c.position.copy(f.p).addScaledVector(f.up, 0.05); c.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(f.sd, f.up, f.t)); });
   }
   function solarModel() {
     const g = new T.Group();
@@ -173,24 +234,49 @@ const Park3D = (function () {
       crowd.instanceMatrix.needsUpdate = true;
       if (rain && rain.visible) { const p = rain.geometry.attributes.position; for (let i = 0; i < p.count; i++) { let y = p.getY(i) - dt * 25; if (y < 0) y = 30; p.setY(i, y); } p.needsUpdate = true; }
       // 놀이기구
+      const blink = Math.sin(t * 3.2) > 0.2;
       items.forEach((it, i) => {
         if (!it || !it.sim) return;
         const U = it.g.userData, active = play && play.list.some(x => x.i === i);
         if (U.kind === 'drop') {
-          if (active) {
-            const s = sampleAt(it.sim.samples, play.t);
-            U.car.position.y = Math.max(0.6, s.y * S + 0.4);
-            const heat = Math.min(1, s.g / 4); U.copperMat.emissive.setRGB(heat * 0.9, heat * 0.35, 0);
-          } else { U.car.position.y += (U.h - 1 - U.car.position.y) * Math.min(1, dt * 0.6); U.copperMat.emissive.multiplyScalar(0.94); }
-          U.car.rotation.y += dt * 0.3;
+          U.beacon.emissive.setHex(blink ? 0xFF2020 : 0x330000);
+          U.ledMat.emissive.setRGB(0.5 + 0.3 * Math.sin(t * 2 + i), 0.42 + 0.25 * Math.sin(t * 2 + i), 0.15);
+          const sm = it.sim.samples, dropT = sm[sm.length - 1].t;
+          let y, gHeat = 0, spin = 0;
+          if (active) { const s = sampleAt(sm, play.t); y = s.y; gHeat = s.g; }
+          else {
+            // 평소 운행: 탑승 3초 → 천천히 회전하며 올라감 7초 → 꼭대기에서 2초 → 떨어짐(시운전과 같은 그래프)
+            U.cyc = (U.cyc + dt) % (12 + dropT);
+            const c = U.cyc;
+            if (c < 3) y = 0;
+            else if (c < 10) { const f = (c - 3) / 7; y = U.Hm * (f * f * (3 - 2 * f)); spin = 0.35; }
+            else if (c < 12) y = U.Hm;
+            else { const s = sampleAt(sm, c - 12); y = s.y; gHeat = s.g; }
+          }
+          U.car.position.y = U.yOf(Math.max(0, y));
+          U.car.rotation.y += dt * spin;
+          if (gHeat > 0) { const heat = Math.min(1, gHeat / 4); U.copperMat.emissive.setRGB(heat * 0.9, heat * 0.35, 0); } else U.copperMat.emissive.multiplyScalar(0.95);
         } else if (U.kind === 'coaster') {
           if (active) {
             const s = sampleAt(it.sim.samples, play.t);
             let u;
-            if (s.phase === 'hill') u = 0.2 + (U.b0 - 0.2) * s.x; else if (s.phase === 'brake') u = U.b0 + (U.b1 - U.b0) * Math.min(1, s.x - 1); else u = U.b1 + 0.02;
+            if (s.phase === 'hill') u = U.uTop + (U.b0 - U.uTop) * s.x; else if (s.phase === 'brake') u = U.b0 + (U.b1 - U.b0) * Math.min(1, s.x - 1); else u = U.b1 + 0.01;
             U.uu = u; placeTrain(it.g, u);
             const heat = Math.min(1, (s.g || 0) / 2); U.copperMat.emissive.setRGB(heat * 0.9, heat * 0.35, 0);
-          } else { U.copperMat.emissive.multiplyScalar(0.94); U.uu = ((U.uu || 0.05) + dt * 0.03) % 1; placeTrain(it.g, U.uu); }
+          } else {
+            // 평소 운행: 승강장 정차 → 체인으로 천천히 오르기 → 높이에 따라 빨라지고(역학적 에너지) → 자석 구간에서 감속
+            const u = U.uu, rel = x => ((x - U.uSt) % 1 + 1) % 1, ru = rel(u);
+            let v;
+            if (U.dwell > 0) { U.dwell -= dt; v = 0; }
+            else if (ru < rel(U.uTop)) v = ru < rel(U.uLift0) ? 0.8 : 0.9;
+            else if (ru < rel(U.b0)) { const y = U.F[Math.round(u * U.N) % U.N].p.y; v = Math.sqrt(Math.max(0.4, 2 * 9.8 * S * 1.6 * (U.h - y) + 0.6)); }
+            else if (ru < rel(U.b1)) { const f = (ru - rel(U.b0)) / Math.max(0.001, rel(U.b1) - rel(U.b0)); v = 5 * (1 - f) + 0.7 * f; const heat = Math.min(1, (1 - f) * 0.8); U.copperMat.emissive.setRGB(heat * 0.9, heat * 0.35, 0); }
+            else v = 0.7;
+            if (!(ru >= rel(U.b0) && ru < rel(U.b1))) U.copperMat.emissive.multiplyScalar(0.95);
+            const nu = (u + v * dt / U.L) % 1;
+            if (rel(nu) < ru) { U.uu = U.uSt; U.dwell = 3; } else U.uu = nu;
+            placeTrain(it.g, U.uu);
+          }
         }
       });
       if (play) { play.t += dt; const end = Math.max(...play.list.map(x => x.it.sim.samples[x.it.sim.samples.length - 1].t)) + 1.2; if (play.t > end) play = null; }
