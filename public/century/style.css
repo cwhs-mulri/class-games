@@ -591,3 +591,33 @@ body.boardmode .lv-endband{flex:1 1 0;min-height:0;overflow:auto}
 .lv-g .lv-scsel{min-width:0}
 .lv-g > b{flex:0 0 100%}
 .lv-g > select{flex:1 1 0;min-width:0}
+/* ---- 예보된 재난 · 재난 브리핑 ---- */
+.dz{background:#2A0E0B;color:#FFE9E4;border:2px solid #FF5A50;border-radius:16px;padding:14px 16px;margin-bottom:14px;font-family:var(--body);display:flex;flex-direction:column;gap:8px}
+.dz .eyebrow{color:#FFB3A8}
+.dz h3{font-family:var(--body);font-weight:800;font-size:20px;margin:2px 0 0}
+.dz p{font-size:14.5px;line-height:1.5;margin:0}
+.dz .dzsci{color:#F6CFC8;font-size:13.5px}
+.dz .dzq{background:#1C2533;color:var(--ink);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.dz .dzq h4{font-size:16px;line-height:1.4;margin:0}
+.dz .dzq > span{font-size:13px;opacity:.85}
+.dzres{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--bad);background:rgba(251,113,133,.08);border-radius:8px;font-family:var(--body);font-size:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dzres.ok{border-left-color:var(--good);background:rgba(74,222,128,.10)}
+.lv-dz{border:2px solid #FF5A50;background:#2A0E0B}
+.lv-dz h2{font-size:22px;margin:2px 0 6px}
+.lv-dz p{font-size:14px;margin:0 0 6px}
+.lv-dzq{background:var(--panel2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.lv-dzq small{color:var(--muted);font-size:12px}
+.lv-dzq h3{font-size:16px;line-height:1.4;margin:2px 0}
+.lv-dzopts{display:grid;gap:7px}
+.lv-dzopts button{text-align:left;border:2px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 12px;font-size:14.5px}
+.lv-dzopts button.on{border-color:var(--ice);background:rgba(127,211,255,.14)}
+.lv-dzres{margin:8px 0 0;padding:8px 10px;border-left:3px solid var(--bad);background:rgba(251,113,133,.08);border-radius:8px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.lv-dzres.ok{border-left-color:var(--good);background:rgba(74,222,128,.10)}
+.lv-dzres small{color:var(--muted)}
+.lv-dzband{align-items:center;margin-top:6px}
+.lv-dzband b{font-size:15px;font-weight:600}
+.lv-dzplan{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.lv-dzplan span{font-size:13px;padding:4px 10px;border-radius:99px;background:var(--panel2);border:1px solid var(--line)}
+.lv-dzplan span.past{opacity:.45}
+.lv-dzplan span.now{border-color:#FF5A50;background:rgba(255,59,48,.18)}
+.lv-dzband small{flex:1 0 100%;font-size:clamp(12px,1.7vh,15px);color:#E6C9C4;line-height:1.35}

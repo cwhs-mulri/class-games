@@ -41,7 +41,11 @@ function playAll(animal, scen, code, pick) {
   E.applyPrep(run, { food: 9, special: 1, damage: 15 });
   let guard = 0;
   while (run.phase === 'play' && guard++ < 100) {
-    if (run.sub === 'event') E.choose(run, pick(run));
+    if (run.sub === 'event') {
+      // 재난 브리핑 문제는 세 번에 두 번꼴로 맞힌다
+      const Gd = E.guardFor(run); if (Gd) E.answerGuard(run, (run.gen + code.length) % 3 ? Gd.c : (Gd.c + 1) % 3);
+      E.choose(run, pick(run));
+    }
     else if (run.sub === 'quiz') { E.answerQuiz(run, E.quizFor(run).c); }
     else if (run.sub === 'quizdone') { run.sub = 'outcome'; if (run.gen < E.GENS - 1) { run.gen++; run.sub = 'event'; } else run.phase = 'end'; }
     else E.advance(run);
@@ -190,4 +194,41 @@ test('긴급 구조: 처음 쓰러지면 한 번 기회, 실패하면 멸종', (
   assert.ok(r2.pop > 0 && r2.rescueUsed && r2.extinctAt == null);
   assert.ok(E.baselineScore('bear', 'low') > E.baselineScore('bear', 'high'));
   const q = E.newRun('Q', 'A', 'bear', 'low'); E.applyPrep(q, { food: 2, special: 0, damage: 0 }); const e0 = q.energy; E.applyQuiz(q, 0.5); assert.equal(q.energy, Math.min(100, e0 + 6));
+});
+
+test('예보된 재난: 2세대 묶음마다 한 세대에 1가지 이상, 같은 수업 코드면 같은 일정', () => {
+  for (const code of ['1234', '5678', 'A1']) {
+    const plan = E.disasterPlan(code, 2);
+    assert.equal(plan.length, E.GENS); assert.equal(plan[0].length, 0);
+    for (let w = 0; w < E.GENS / 2; w++) { const n = plan[2 * w].length + plan[2 * w + 1].length; assert.ok(n >= 1 && n <= 2, `묶음 ${w}: ${n}`); }
+    plan.forEach((ks, g) => ks.forEach(k => { assert.ok(E.DISASTER_FROM[k] <= g, `${k}는 ${g}세대에 나올 수 없다`); assert.ok(E.SURPRISES[k]); }));
+    assert.deepEqual(plan, E.disasterPlan(code, 2));
+  }
+  assert.ok(E.disasterPlan('1234', 0).every(x => x.length === 0));
+  assert.equal(E.disasterPlan('1234', 1).filter(x => x.length).length, E.GENS - 1);
+});
+
+test('재난 브리핑: 맞힌 비율만큼 피해가 줄고, 다시 계산해도 같다', () => {
+  const mk = () => { const run = E.newRun('1234', 'T', 'penguin', 'mid'); E.applyPrep(run, { food: 9, special: 1, damage: 15 }); return run; };
+  const a = mk(), b = mk(); let seen = 0;
+  while (a.phase === 'play' && a.gen < 12) {
+    const Gd = E.guardFor(a);
+    if (Gd) { seen++; assert.equal(Gd.a.length, 3); assert.ok(Gd.c >= 0 && Gd.c < 3); }
+    E.resolveRun(a, 0, { guard: 1 }); E.resolveRun(b, 0, { guard: 0 });
+    if (Gd) { assert.equal(a.last.guard.cut, E.GUARD_MAX); assert.equal(b.last.guard.cut, 0); assert.ok(a.last.auto.length >= 1); } else assert.equal(a.last.guard, null);
+    for (const r of [a, b]) { if (r.sub === 'outcome' && E.hasQuiz(r)) { E.advance(r); E.applyQuiz(r, 0); r.sub = 'quizdone'; } E.advance(r); }
+  }
+  assert.ok(seen >= 5);
+  assert.ok(a.health + a.energy + a.pop > b.health + b.energy + b.pop, '대비한 모둠이 더 낫다');
+  const rp = E.replay(a, 'mid'); assert.equal(Math.round(rp.popHist[a.gen - 1]), Math.round(a.log[a.gen - 1].pop));
+  // 재난을 끈 판은 예전과 같다
+  const off = E.newRun('1234', 'T', 'penguin', 'mid', 0); assert.equal(E.guardFor(off), null);
+});
+
+test('혼자 하기: 브리핑은 한 번만 답할 수 있고, 맞히면 피해를 모두 막는다', () => {
+  const run = E.newRun('1234', 'T', 'bear', 'low'); E.applyPrep(run, { food: 9, special: 1, damage: 15 });
+  while (!E.guardFor(run)) { E.choose(run, 0); if (E.hasQuiz(run)) { E.advance(run); E.answerQuiz(run, 0); run.sub = 'outcome'; run.gen++; run.sub = 'event'; } else E.advance(run); }
+  const Gd = E.guardFor(run);
+  assert.equal(E.answerGuard(run, Gd.c), true); assert.equal(E.answerGuard(run, (Gd.c + 1) % 3), true);
+  E.choose(run, 0); assert.equal(run.last.guard.cut, 1); assert.equal(run.last.guard.stock, 6);
 });

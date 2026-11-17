@@ -92,6 +92,10 @@ test('학생은 자기 자리만 쓴다', async () => {
   await assertSucceeds(student().ref('rooms/1111/players/s-uid').set({ name: '하늘', g: 'g1' }));
   await assertSucceeds(student().ref('rooms/1111/votes/0/s-uid').set({ c: 1, g: 'g1' }));
   await assertSucceeds(student().ref('rooms/1111/quiz/1/s-uid').set({ a: 2, g: 'g1' }));
+  // 재난 브리핑 답: 자기 uid만, 보기 0~2
+  await assertSucceeds(student().ref('rooms/1111/guard/3/s-uid').set({ a: 1, g: 'g1', t: 1 }));
+  await assertFails(student().ref('rooms/1111/guard/3/s-uid').set({ a: 5, g: 'g1' }));
+  await assertFails(student().ref('rooms/1111/guard/3/other').set({ a: 1, g: 'g1' }));
   await assertSucceeds(student().ref('rooms/1111/abil/0/s-uid').set({ g: 'g1' }));
   await assertSucceeds(student().ref('rooms/1111/prep/s-uid').set({ food: 8, special: 1, damage: 10, g: 'g1' }));
   await assertSucceeds(student().ref('rooms/1111/live').once('value'));

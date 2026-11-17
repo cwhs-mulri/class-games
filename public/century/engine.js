@@ -27,7 +27,7 @@ const ANIMALS = {
     key: 'bear', letter: 'B', name: '북극곰', place: '북극해', habName: '해빙 면적', energyName: '지방 비축', popName: '개체군', healthName: '건강',
     tagline: '얼음이 사라지면 사냥할 발판도 사라진다',
     threat: '해빙 감소 → 사냥 기간 단축',
-    sens: { hab: 100, heat: 1.4, acid: 0 },
+    sens: { hab: 81, heat: 1.4, acid: 0 },
     prep: { food: '물범', special: '눈 굴 자리', hazard: '차가운 바다', goal: '얼음 위에서 물범을 사냥해 지방을 모으세요. 해빙은 60초 동안 점점 녹아요. 물속에서는 느려지고 체력이 줄어요. 북쪽 육지의 눈 굴 자리를 찾으면 새끼를 키우기 좋아요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '북극 기온 상승', '해빙 감소', '사냥 기간 단축', '굶주림 · 번식 실패'],
     intro: { id: 'b0', title: '얼음 위의 봄', text: '물범 사냥철이 시작됐다. 해빙 위 숨구멍 앞에서 몇 시간이고 숨을 죽인다.',
@@ -79,7 +79,7 @@ const ANIMALS = {
     key: 'penguin', letter: 'P', name: '황제펭귄', place: '남극 해안', habName: '정착빙', energyName: '체지방', popName: '번식 군집', healthName: '건강',
     tagline: '새끼가 자랄 때까지 얼음이 버텨 줘야 한다',
     threat: '정착빙 조기 붕괴 → 새끼 익사',
-    sens: { hab: 81, heat: 0, acid: 0 },
+    sens: { hab: 70, heat: 0, acid: 0 },
     prep: { food: '크릴', special: '단단한 번식지', hazard: '표범물범', goal: '바다에 뛰어들어 크릴을 모으세요. 물속에서는 빠르지만 표범물범을 조심하세요. 얼음 위의 단단한 번식지를 찾으면 새끼를 지키기 좋아요. 얼음 가장자리는 점점 갈라져요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '남극 바다 수온 상승', '정착빙 조기 붕괴', '새끼 익사 · 크릴 감소', '번식 실패'],
     intro: { id: 'p0', title: '겨울 번식지로', text: '영하 40도의 겨울. 수컷들은 알을 발등에 올리고 서로 몸을 붙여 거대한 허들을 만든다.',
@@ -129,7 +129,7 @@ const ANIMALS = {
     key: 'coral', letter: 'C', name: '산호', place: '열대 산호초', habName: '수온 적합도', energyName: '영양분', popName: '산호 면적', healthName: '공생조류',
     tagline: '바다가 1~2°C만 뜨거워져도 하얗게 질린다',
     threat: '해양 열파 → 백화 · 산성화',
-    sens: { hab: 78, heat: 0.5, acid: 0.01 },
+    sens: { hab: 70, heat: 0.5, acid: 0.01 },
     prep: { food: '플랑크톤', special: '공생조류', hazard: '해양 열파', goal: '산호 유생이 되어 플랑크톤을 먹고, 초록빛 공생조류를 모으세요. 뜨거운 바닷물(빨간 영역)은 점점 넓어져요. 왕관불가사리도 피하세요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화 + 바다의 CO₂ 흡수', '수온 상승 · 해양 산성화', '공생조류 방출(백화) · 골격 약화', '영양 부족', '산호 폐사'],
     intro: { id: 'c0', title: '산란의 밤', text: '보름달이 뜬 밤, 산호들이 일제히 분홍빛 알과 정자 묶음을 내뿜었다. 바다가 별처럼 반짝인다.',
@@ -179,7 +179,7 @@ const ANIMALS = {
     key: 'pollock', letter: 'F', name: '명태', place: '동해', habName: '냉수대', energyName: '먹이', popName: '어군', healthName: '건강',
     tagline: '차가운 동해가 사라지면 갈 곳이 없다',
     threat: '동해 수온 상승 → 냉수대 축소',
-    sens: { hab: 94, heat: 0.5, acid: 0 },
+    sens: { hab: 81, heat: 0.5, acid: 0 },
     prep: { food: '동물성 플랑크톤', special: '산란장', hazard: '따뜻한 물 · 그물', goal: '명태 떼를 이끌고 차가운 바다에서 플랑크톤을 먹으세요. 남쪽에서 따뜻한 물이 점점 올라와요(주황 영역). 그물도 피하세요. 북서쪽 연안의 산란장을 찾으면 어군이 늘어요.' },
     chain: ['화석 연료 연소', '대기 중 CO₂ 증가', '온실 효과 강화', '동해 수온 상승', '냉수대 축소 · 먹이 변화', '서식지 북상 (+ 어린 명태 남획)', '동해 명태 감소'],
     intro: { id: 'f0', title: '동해의 겨울', text: '차가운 북한 한류를 따라 동해 연안으로 산란하러 내려왔다.',
@@ -433,18 +433,18 @@ function abilityDesc(animal, type) {
 // ---- 교사 기습 이벤트 ----
 // dT: 그 세대만 기온 변화, permT: 이후 계속 기온 변화, e: 동물별 즉시 효과
 const SURPRISES = {
-  elnino: { name: '슈퍼 엘니뇨', icon: '🌊', dT: 0.3,
+  elnino: { name: '슈퍼 엘니뇨', icon: '🌊', dT: 0.2,
     text: '동태평양 적도 바다가 끓어오른다. 전 세계 기온이 일시적으로 치솟는다.',
     sci: '엘니뇨는 동태평양 적도 해역의 수온이 평년보다 높아지는 현상이다. 1997~98년, 2015~16년의 슈퍼 엘니뇨 때 전 지구 기온이 크게 오르고 대규모 산호 백화가 일어났다.',
     e: { bear: { energy: -8 }, penguin: { energy: -10 }, coral: { health: -20 }, pollock: { health: -8, energy: -6 } } },
-  heatdome: { name: '열돔 폭염', icon: '🔥', dT: 0.2,
+  heatdome: { name: '열돔 폭염', icon: '🔥', dT: 0.1,
     text: '뜨거운 공기가 뚜껑처럼 하늘을 덮어 기록적인 폭염이 이어진다.',
     sci: '열돔은 고기압이 한 지역에 오래 머물며 뜨거운 공기를 가두는 현상이다. 온난화로 폭염은 더 잦고 강해지고 있다.',
-    e: { bear: { health: -8, hab: -2 }, penguin: { health: -6 }, coral: { health: -12 }, pollock: { health: -10 } } },
+    e: { bear: { health: -8 }, penguin: { health: -6 }, coral: { health: -12 }, pollock: { health: -10 } } },
   wildfire: { name: '초대형 산불', icon: '🌲', permT: 0.05,
     text: '북쪽 숲이 몇 달째 불탄다. 연기와 검댕이 하늘과 얼음을 덮는다.',
     sci: '대형 산불은 많은 이산화 탄소를 내뿜는다. 검댕(블랙 카본)이 눈과 얼음 위에 내려앉으면 햇빛을 더 흡수해 얼음이 빨리 녹는다.',
-    e: { bear: { hab: -5 }, penguin: { energy: -4 }, coral: { health: -4 }, pollock: { energy: -4 } } },
+    e: { bear: { hab: -3 }, penguin: { energy: -4 }, coral: { health: -4 }, pollock: { energy: -4 } } },
   methane: { name: '영구 동토층 메테인 분출', icon: '💨', permT: 0.1,
     text: '녹아내린 언 땅에서 메테인이 대량으로 뿜어져 나온다.',
     sci: '영구 동토층이 녹으면 땅속에 갇혀 있던 메테인이 나온다. 메테인은 강력한 온실 기체라 온난화를 더 빠르게 하는 양의 되먹임이 된다.',
@@ -482,6 +482,67 @@ function surpriseDef(k) {
   const c = sanitizeCustom(k); return Object.assign({ key: 'custom' }, c, { effFor: () => c.e });
 }
 
+// ---- 예보된 재난(자동) ----
+// 수업 코드로 정해지는 재난 일정: every세대 묶음마다 한 세대에 재난 1가지(2020년대부터는 가끔 2가지가 겹친다).
+// 예보된 재난은 '재난 브리핑' 문제를 맞힌 만큼 대비해서 피해를 줄일 수 있다(교사가 일으키는 기습 이벤트는 대비 불가).
+const DISASTER_EVERY = 2;
+const DISASTER_FROM = { elnino: 0, heatdome: 0, wildfire: 0, volcano: 0, oilspill: 4, plastic: 5, methane: 9 }; // 그 재난이 나올 수 있는 첫 세대
+const DOUBLE_P = 0.3;
+const GUARD_MAX = 0.6; // 모둠원 모두 맞히면 피해 60% 감소
+const GUARD_STOCK = 6; // 혼자 하기에서 맞혔을 때 비상 식량(에너지)
+const GUARDS = {
+  elnino: [
+    { q: '엘니뇨 때 바닷물이 평년보다 따뜻해지는 곳은?', a: ['동태평양 적도 해역', '북극해', '남극 대륙 주변 바다'], e: '엘니뇨는 동태평양 적도 해역의 수온이 평년보다 높아지는 현상이다.' },
+    { q: '슈퍼 엘니뇨가 오면 산호초에 흔히 일어나는 일은?', a: ['수온이 올라 대규모 백화가 일어난다', '수온이 내려가 산호가 얼어 죽는다', '산호가 평소보다 빨리 자란다'], e: '1997~98년, 2015~16년 슈퍼 엘니뇨 때 대규모 산호 백화가 일어났다.' } ],
+  heatdome: [
+    { q: '열돔 폭염은 어떻게 생길까?', a: ['한곳에 오래 머무는 고기압이 뜨거운 공기를 가둔다', '저기압이 찬 공기를 끌어온다', '오존층에 구멍이 뚫린다'], e: '고기압이 한 지역에 오래 머물면 뜨거운 공기가 뚜껑에 갇힌 것처럼 빠져나가지 못한다.' },
+    { q: '지구 온난화가 계속되면 폭염은 어떻게 될까?', a: ['더 잦고 강해진다', '점점 사라진다', '겨울에만 나타난다'], e: '온난화로 폭염은 더 잦고 강해지고 있다.' } ],
+  wildfire: [
+    { q: '산불의 검댕이 눈과 얼음 위에 내려앉으면?', a: ['햇빛을 더 흡수해 얼음이 빨리 녹는다', '햇빛을 더 반사해 얼음이 늘어난다', '아무 영향이 없다'], e: '검댕(블랙 카본)은 어두워서 햇빛을 더 흡수한다. 눈과 얼음의 반사율을 낮춰 녹는 속도를 높인다.' },
+    { q: '대형 산불이 온난화를 부추기는 까닭은?', a: ['숲에 저장된 탄소가 이산화 탄소로 나와서', '산소를 많이 만들어 내서', '오존층을 두껍게 해서'], e: '나무가 타면 저장하고 있던 탄소가 이산화 탄소로 대기에 나온다.' } ],
+  methane: [
+    { q: '영구 동토층이 녹아 메테인이 나오면 온난화는?', a: ['더 빨라진다(양의 되먹임)', '느려진다(음의 되먹임)', '달라지지 않는다'], e: '온난화 → 동토층 융해 → 메테인 방출 → 온난화 강화로 이어지는 양의 되먹임이다.' },
+    { q: '같은 양일 때 메테인의 온실 효과는 이산화 탄소와 비교해 어떨까?', a: ['훨씬 크다', '훨씬 작다', '똑같다'], e: '메테인은 같은 양일 때 이산화 탄소보다 온실 효과가 훨씬 큰 강력한 온실 기체다.' } ],
+  volcano: [
+    { q: '대형 화산 분화 뒤 지구가 잠시 식는 까닭은?', a: ['성층권에 퍼진 황산염 에어로졸이 햇빛을 반사해서', '화산재가 온실 기체를 흡수해서', '용암이 바다를 식혀서'], e: '성층권까지 올라간 황산염 에어로졸이 햇빛을 반사해 지표에 닿는 에너지가 줄어든다.' },
+    { q: '화산 분화로 지구가 식는 효과는 얼마나 이어질까?', a: ['1~2년 정도로 짧다', '수백 년 동안 이어진다', '영원히 이어진다'], e: '에어로졸은 1~2년이면 가라앉는다. 온난화를 막아 주는 해결책이 될 수 없다.' } ],
+  plastic: [
+    { q: '미세 플라스틱이 해양 생물에게 위험한 까닭은?', a: ['먹이 사슬을 따라 몸에 쌓여서', '바닷물 온도를 높여서', '바닷물을 얼게 해서'], e: '미세 플라스틱은 작은 생물이 먹고, 그 생물을 먹는 포식자의 몸에 차례로 쌓인다.' },
+    { q: '바다로 흘러든 플라스틱이 잘게 부서진 것을 무엇이라 할까?', a: ['미세 플라스틱', '플랑크톤', '에어로졸'], e: '플라스틱은 썩지 않고 잘게 부서져 미세 플라스틱이 된다.' } ],
+  oilspill: [
+    { q: '기름 유출이 바닷새와 해양 포유류에게 치명적인 까닭은?', a: ['깃털과 털의 보온·방수 기능을 망가뜨려서', '바닷물을 얼려서', '먹이를 너무 많이 늘려서'], e: '기름이 묻은 깃털과 털은 물을 막지 못해 체온을 지키기 어렵다.' },
+    { q: '바다 표면을 덮은 기름막이 바닷속 생물에게 주는 피해는?', a: ['바다와 공기 사이의 산소 교환을 막는다', '바닷물의 소금을 없앤다', '수온을 0°C로 낮춘다'], e: '기름막은 바다 표면을 덮어 산소 교환을 막는다.' } ],
+};
+const _plans = {};
+function disasterPlan(code, every) {
+  every = Math.max(0, Math.round(Number(every) || 0));
+  const plan = Array.from({ length: GENS }, () => []);
+  if (!every) return plan;
+  const k = code + '|' + every; if (_plans[k]) return _plans[k];
+  const r = rng(hashStr('dz|' + code)), recent = [];
+  for (let w = 0; w * every < GENS; w++) {
+    const gens = []; for (let g = w * every; g < Math.min(GENS, (w + 1) * every); g++) if (g > 0) gens.push(g); // 1920년대(소개)는 뺀다
+    if (!gens.length) continue;
+    const g = gens[Math.floor(r() * gens.length)];
+    // 최근에 나온 재난은 뒤로 미뤄 같은 재난이 잇달아 오지 않게 한다
+    const pool = shuffle(Object.keys(DISASTER_FROM).filter(d => DISASTER_FROM[d] <= g), r).sort((x, y) => recent.includes(x) - recent.includes(y));
+    plan[g] = pool.slice(0, g >= HIST_GENS && r() < DOUBLE_P ? 2 : 1);
+    recent.push(...plan[g]); while (recent.length > 3) recent.shift();
+  }
+  return (_plans[k] = plan);
+}
+const autoOf = (run, gen) => run && run.dz ? disasterPlan(run.code, run.dz)[gen == null ? run.gen : gen] || [] : [];
+// 재난 브리핑 문제: 같은 재난이 다시 오면 다른 문제. 보기 순서는 수업 코드·세대로 섞는다
+function guardFor(run, gen) {
+  gen = gen == null ? run.gen : gen;
+  const plan = disasterPlan(run.code, run.dz || 0), key = (plan[gen] || [])[0]; if (!key || !GUARDS[key]) return null;
+  let occ = 0; for (let g = 0; g < gen; g++) if ((plan[g] || []).includes(key)) occ++;
+  const Q = GUARDS[key][occ % GUARDS[key].length], ord = shuffle(Q.a.map((_, i) => i), rng(hashStr('gd|' + run.code + '|' + gen)));
+  return { key, q: Q.q, a: ord.map(i => Q.a[i]), c: ord.indexOf(0), e: Q.e };
+}
+const guardCut = f => Math.round(GUARD_MAX * clamp(Number(f) || 0, 0, 1) * 100) / 100;
+function cutE(e, cut) { const o = {}; for (const k in e || {}) o[k] = e[k] < 0 ? -Math.round(-e[k] * (1 - cut)) : e[k]; return o; }
+
 // 과학 무전 (퀴즈)
 const QUIZ = [
   { q: '지구가 우주로 내보내는 복사 에너지는 주로 어떤 파장일까?', a: ['적외선', '자외선', '가시광선', 'X선'], c: 0, e: '태양은 주로 가시광선 같은 짧은 파장으로, 지구는 주로 적외선 같은 긴 파장으로 에너지를 내보낸다. 온실 기체는 이 적외선을 흡수했다가 다시 방출한다.' },
@@ -507,7 +568,7 @@ QUIZ.push(
 // ---- 시드 난수 ----
 function hashStr(s) { let h = 2166136261 >>> 0; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function rng(seed) { let a = seed >>> 0; return function () { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-const TUNE = { f0: 10, f1: 0.30, up: 43, e0: 45, h0: 55, hb: 60, hd: 4, sk: 0.06, rp: 8, re: 30, rh: 40 };
+const TUNE = { f0: 10, f1: 0.34, up: 44, e0: 45, h0: 55, hb: 60, hd: 4, sk: 0.06, rp: 8, re: 30, rh: 40 };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function shuffle(arr, r) { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
@@ -558,10 +619,10 @@ function addE(st, e, popScale) {
 }
 function cloneState(st) { return { pop: st.pop, energy: st.energy, health: st.health, habMod: st.habMod || 0, foodMod: st.foodMod || 0, tAdd: st.tAdd || 0, flags: { ...(st.flags || {}) } }; }
 
-// opts: { roles: [능력 type…], surprises: [키…] }
+// opts: { roles: [능력 type…], surprises: [키…](교사 기습), auto: [키…](예보된 재난), guard: 0~1(대비 성공 비율) }
 function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
   opts = opts || {};
-  const roles = opts.roles || [], surprises = opts.surprises || [];
+  const roles = opts.roles || [], auto = opts.auto || [], cut = opts.full ? clamp(Number(opts.guard) || 0, 0, 1) : guardCut(opts.guard), surprises = auto.concat(opts.surprises || []);
   const st = cloneState(st0);
   const ev = findEvent(animal, eventOrder(code, animal)[gen]);
   const ch = ev.c[choiceIdx] || ev.c[0];
@@ -587,12 +648,15 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
     if (t === 'pop') addE(st, { pop: 8 });
     if (t === 'hab') addE(st, { hab: 6 });
   }
-  for (const k of surprises) {
-    const S = surpriseDef(k); if (!S) continue;
-    addE(st, S.effFor(animal), shield);
+  surprises.forEach((k, i) => {
+    const S = surpriseDef(k); if (!S) return;
+    addE(st, i < auto.length ? cutE(S.effFor(animal), cut) : S.effFor(animal), shield);
     if (S.permT) st.tAdd = Math.round((st.tAdd + S.permT) * 100) / 100;
     notes.push(typeof k === 'string' ? k : { icon: S.icon, name: S.name, theme: S.theme });
-  }
+  });
+  // 혼자 하기: 브리핑을 맞히면 미리 모아 둔 비상 식량도 얻는다
+  const stock = opts.full && auto.length && Number(opts.guard) >= 1 ? GUARD_STOCK : 0;
+  if (stock) addE(st, { energy: stock });
   const { T, ppm } = genClimate(scenKey, gen, st, surprises);
   const A = ANIMALS[animal];
   // 기본 서식지가 바닥나도 보호 활동(habMod)으로 지켜 낸 만큼은 남는다
@@ -605,13 +669,14 @@ function stepGen(animal, scenKey, code, team, gen, st0, choiceIdx, opts) {
   let dp = clamp(Math.round((st.energy - TUNE.e0) / 5 + (st.health - TUNE.h0) / 8 + (hab - TUNE.hb) / TUNE.hd), -25, 6);
   if (dp < 0) dp = Math.round(dp * shield);
   st.pop = clamp(st.pop + dp, 0, 100);
-  return { state: st, T, ppm, hab, text, eff, roll, notes, chain: chainT, chainE: chainT ? ev.chain.e : null, natural: { food: Math.round(food - TUNE.up), dh: Math.round(dh), dp }, before: cloneState(st0) };
+  return { state: st, T, ppm, hab, text, eff, roll, notes, chain: chainT, chainE: chainT ? ev.chain.e : null, natural: { food: Math.round(food - TUNE.up), dh: Math.round(dh), dp }, before: cloneState(st0), auto, guard: auto.length ? { f: clamp(Number(opts.guard) || 0, 0, 1), cut, stock } : null };
 }
 
 // ---- 한 모둠의 기록(run) ----
-function newRun(code, team, animal, scen) {
+// dz: 예보된 재난 주기(세대). 0이면 없음
+function newRun(code, team, animal, scen, dz) {
   return {
-    v: 2, code: String(code).trim(), team: String(team).trim(), animal, scen,
+    v: 2, code: String(code).trim(), team: String(team).trim(), animal, scen, dz: dz == null ? DISASTER_EVERY : Math.max(0, Math.round(Number(dz) || 0)), guardAns: {},
     phase: 'prep', gen: 0, sub: 'event',
     pop: 50, energy: 50, health: 80, habMod: 0, foodMod: 0, tAdd: 0, flags: {},
     init: null, recs: [], log: [], quizAns: {}, extinctAt: null, uses: {},
@@ -638,10 +703,12 @@ function applyPrep(run, res) {
 }
 function resolveRun(run, choiceIdx, opts) {
   opts = opts || {};
-  const res = stepGen(run.animal, run.scen, run.code, run.team, run.gen, run, choiceIdx, opts);
+  const auto = autoOf(run), guard = auto.length ? clamp(Number(opts.guard) || 0, 0, 1) : 0;
+  const res = stepGen(run.animal, run.scen, run.code, run.team, run.gen, run, choiceIdx, Object.assign({}, opts, { auto, guard }));
   Object.assign(run, { pop: res.state.pop, energy: res.state.energy, health: res.state.health, habMod: res.state.habMod, foodMod: res.state.foodMod, tAdd: res.state.tAdd, flags: res.state.flags });
   run.recs[run.gen] = { c: choiceIdx, roles: opts.roles || [], sur: opts.surprises || [] };
-  run.last = { gen: run.gen, idx: choiceIdx, text: res.text, eff: res.eff, roll: res.roll, chain: res.chain, chainE: res.chainE, natural: res.natural, T: res.T, ppm: res.ppm, hab: res.hab, notes: res.notes, roles: opts.roles || [], roleNames: opts.roleNames || [], before: { pop: res.before.pop, energy: res.before.energy, health: res.before.health } };
+  if (auto.length) { run.recs[run.gen].gd = guard; if (opts.full) run.recs[run.gen].gf = 1; }
+  run.last = { gen: run.gen, idx: choiceIdx, text: res.text, eff: res.eff, roll: res.roll, chain: res.chain, chainE: res.chainE, natural: res.natural, T: res.T, ppm: res.ppm, hab: res.hab, notes: res.notes, auto, guard: res.guard, roles: opts.roles || [], roleNames: opts.roleNames || [], before: { pop: res.before.pop, energy: res.before.energy, health: res.before.health } };
   run.log.push({ gen: run.gen, id: run.order[run.gen], idx: choiceIdx, text: res.text, pop: run.pop });
   run.sub = 'outcome';
   if (run.pop <= 0) {
@@ -651,7 +718,18 @@ function resolveRun(run, choiceIdx, opts) {
   return res;
 }
 // 혼자 하기(한 기기)용
-function choose(run, idx) { if (run.phase !== 'play' || run.sub !== 'event') return null; return resolveRun(run, idx); }
+function choose(run, idx) {
+  if (run.phase !== 'play' || run.sub !== 'event') return null;
+  const Gd = guardFor(run), ans = (run.guardAns || {})[run.gen];
+  return resolveRun(run, idx, { guard: Gd && ans === Gd.c ? 1 : 0, full: true }); // 혼자 하기: 맞히면 피해를 모두 막는다
+}
+// 혼자 하기: 재난 브리핑 문제에 답한다(한 번만)
+function answerGuard(run, ai) {
+  const Gd = guardFor(run); if (!Gd || run.sub !== 'event') return null;
+  run.guardAns = run.guardAns || {};
+  if (run.guardAns[run.gen] == null) run.guardAns[run.gen] = ai;
+  return run.guardAns[run.gen] === Gd.c;
+}
 // 긴급 구조 미션 문제: 이 판의 과학 무전에 안 나온 문제 중에서, 보기 순서도 섞는다
 function rescueQuizFor(run) {
   const used = new Set(run.quiz), pool = QUIZ.map((_, i) => i).filter(i => !used.has(i));
@@ -719,14 +797,15 @@ function applyMidGame(run, res) {
 // 공정한 순위: 버틴 세대와 남은 개체 수 → 같은 동물·같은 세계의 '보통 모둠' 점수와 비교
 function runScore(survived, pop) { return survived * 10 + (survived >= GENS ? pop : 0); }
 const _base = {};
-function baselineScore(animal, scen) {
-  const k = animal + scen; if (_base[k] != null) return _base[k];
+function baselineScore(animal, scen, dz) {
+  dz = dz == null ? DISASTER_EVERY : dz;
+  const k = animal + scen + dz; if (_base[k] != null) return _base[k];
   let tot = 0; const N = 40;
   for (let i = 0; i < N; i++) {
-    const r = rng(hashStr('base|' + k + '|' + i)), run = newRun('B' + i, 'B', animal, scen);
+    const r = rng(hashStr('base|' + k + '|' + i)), run = newRun('B' + i, 'B', animal, scen, dz);
     applyPrep(run, { food: 8, special: 1, damage: 15 });
     while (run.phase === 'play') {
-      if (run.sub === 'event') { const ev = findEvent(animal, run.order[run.gen]); resolveRun(run, Math.floor(r() * ev.c.length)); }
+      if (run.sub === 'event') { const ev = findEvent(animal, run.order[run.gen]); resolveRun(run, Math.floor(r() * ev.c.length), { guard: 0.6 }); }
       else if (run.sub === 'quiz') { applyQuiz(run, 0.7); run.sub = 'quizdone'; }
       advance(run);
     }
@@ -758,7 +837,7 @@ function replay(run, scenKey) {
   const popHist = []; let survived = 0, usedRescue = false;
   for (let g = 0; g < GENS; g++) {
     const rec = run.recs[g] || { c: 0, roles: [], sur: [] };
-    const res = stepGen(run.animal, scenKey, run.code, run.team, g, st, rec.c, { roles: rec.roles, surprises: rec.sur });
+    const res = stepGen(run.animal, scenKey, run.code, run.team, g, st, rec.c, { roles: rec.roles, surprises: rec.sur, auto: autoOf(run, g), guard: rec.gd || 0, full: !!rec.gf });
     st = res.state;
     if (rec.aid) { st.energy = clamp(st.energy + rec.aid.e, 0, 100); st.health = clamp(st.health + (rec.aid.h || 0), 0, 100); }
     if (st.pop <= 0 && run.rescueOk && !usedRescue) { usedRescue = true; st.pop = TUNE.rp; st.energy = Math.max(st.energy, TUNE.re); st.health = Math.max(st.health, TUNE.rh); }
@@ -805,6 +884,7 @@ function parseCode(str, team) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
+  DISASTER_EVERY, DISASTER_FROM, GUARDS, GUARD_MAX, disasterPlan, guardFor, guardCut, answerGuard,
   TUNE, GENS, HIST_GENS, CUSTOM_THEMES, sanitizeCustom, surpriseDef, DECADES, SCENARIOS, SCEN_ORDER, ANIMALS, ANIMAL_ORDER, QUIZ, QUIZ_GENS, HISTORY, NOW, ROLES, ROLE_USES, SURPRISES, SURPRISE_ORDER,
   eventOrder, findEvent, allEvents, newRun, prepToState, mergePrep, applyPrep, resolveRun, choose, hasQuiz, quizFor, rescueQuizFor, applyQuiz, answerQuiz, advance,
   SUMMIT_GENS, PLEDGES, summitDT, applySummit, AID, applyAid, applyRescue, MID_GEN, midGain, applyMidGame, runScore, baselineScore, quizGain,

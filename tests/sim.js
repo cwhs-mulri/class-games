@@ -1,5 +1,5 @@
 // 수업 모드 밸런스 시뮬레이션 — 실제 수업처럼 다수결·특임대·과학 무전·60초 준비를 넣어 모둠 생존율을 잰다.
-// node tests/sim.js [모둠 수]  (기습 이벤트는 교사 재량이라 넣지 않는다)
+// node tests/sim.js [모둠 수]  (예보된 재난은 2세대에 한 번꼴로 자동 포함. 교사 기습 이벤트는 재량이라 넣지 않는다)
 const E = require('../public/century/engine.js');
 
 // 선택지의 기대 효과 점수(모둠이 상식적으로 판단하는 정도)
@@ -27,7 +27,9 @@ function playClassGroup(animal, scen, i, o) {
       // 특임대: 위태로울 때 또는 가끔 능력 사용
       const roles = [];
       types.forEach((t, k) => { if (uses[k] < E.ROLE_USES && !roles.includes(t) && (run.pop < 35 || run.energy < 30 || r() < 0.15)) { roles.push(t); uses[k]++; } });
-      E.resolveRun(run, c, { roles, surprises: (o.sur && o.sur[run.gen]) || [], rescue: !o.basic });
+      // 재난 브리핑: 전자칠판 속보를 읽고 푸는 문제라 과학 무전보다 조금 잘 맞힌다
+      const guard = E.guardFor(run) ? Math.max(0, Math.min(1, quizOk + 0.05 + (r() - 0.5) * 0.4)) : 0;
+      E.resolveRun(run, c, { roles, surprises: (o.sur && o.sur[run.gen]) || [], rescue: !o.basic, guard });
       if (!o.basic) {
         // 다른 모둠의 지원: 위기(개체 수 25 미만)일 때 가끔 받는다
         if (run.pop > 0 && run.pop < 25 && r() < 0.5) E.applyAid(run, E.AID.gain * (1 + Math.floor(r() * 3)), E.AID.health);

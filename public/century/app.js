@@ -187,7 +187,15 @@ function journalHTML(){
   const head = `<div class="jhead"><span>${A.name}의 생존 일지</span><span class="yr">${g+1}세대 · ${DECADES[g]}년대</span></div>`;
   let body = '';
   if (run.sub === 'event'){
-    body = `<div class="jt">${ev.title}</div><p class="jx">${ev.text}</p>
+    const Gd = guardFor(run), ga = (run.guardAns || {})[g];
+    const dz = Gd ? `<div class="dz"><div class="eyebrow">🚨 예보된 재난 · 이번 10년에 닥쳐요</div>
+      ${autoOf(run).map(k => { const S = SURPRISES[k], e = S.e[run.animal] || {}, KL = KEYLBL(A); return `<h3>${S.icon} ${S.name}</h3><p>${S.text}</p><p class="dzsci">${S.sci}</p><div class="deltas">${Object.keys(e).filter(x=>e[x]).map(x=>`<span class="chip ${e[x]>0?'up':'down'}">${KL[x]} ${e[x]>0?'+':''}${e[x]}</span>`).join('')}${S.dT?`<span class="chip ${S.dT>0?'down':'up'}">이번 세대 기온 ${S.dT>0?'+':''}${S.dT}°C</span>`:''}${S.permT?`<span class="chip down">기온 +${S.permT}°C 계속</span>`:''}</div>`; }).join('')}
+      <div class="dzq"><b>🛡️ 재난 브리핑</b><span>위 속보를 읽고 맞히면 생물 피해를 모두 막고 비상 식량 +${GUARD_STOCK}</span>
+        <h4>${Gd.q}</h4>
+        <div class="qopts">${Gd.a.map((a,i)=>{ let c=''; if(ga!=null){ if(i===Gd.c) c='right'; else if(i===ga) c='wrong'; } return `<button class="qopt ${c}" data-g="${i}" ${ga!=null?'disabled':''}><span class="l">${'ABC'[i]}</span>${a}</button>`; }).join('')}</div>
+        ${ga!=null?`<p style="font-size:14px"><b style="color:${ga===Gd.c?'var(--good)':'var(--bad)'}">${ga===Gd.c?'대비 성공! 피해를 막았다.':'대비 실패. 재난을 그대로 맞는다.'}</b> ${Gd.e}</p>`:'<p style="font-size:13px;opacity:.8">기회는 한 번이에요. 답하지 않고 아래에서 선택하면 대비 없이 재난을 맞아요.</p>'}
+      </div></div>` : '';
+    body = `${dz}<div class="jt">${ev.title}</div><p class="jx">${ev.text}</p>
       <div class="choices">${ev.c.map((c,i)=>`<button class="choice" data-c="${i}"><b>${c.l}</b><span class="hints">${hintChips(c)}</span></button>`).join('')}</div>
       <p class="nat">모둠이 함께 토론해서 하나를 고르세요. 선택 뒤에는 ${A.habName}에 따라 자연스러운 변화가 이어져요.</p>`;
   } else if (run.sub === 'outcome'){
@@ -198,6 +206,7 @@ function journalHTML(){
     body = `<div class="jt">${ev.title}</div>
       <div class="outcome"><p class="jx">→ ${L.text}${L.roll?` <span style="font-size:20px;color:var(--pink2)">(${L.roll.good?'운이 따랐다':'운이 없었다'})</span>`:''}</p>
       <div class="deltas">${eff||'<span class="chip">선택 효과 없음</span>'}</div>
+      ${L.guard ? `<p class="dzres ${L.guard.cut>0?'ok':''}">${(L.auto||[]).map(k=>{ const S=SURPRISES[k], e=cutE(S.e[run.animal]||{}, L.guard.cut); return `${S.icon} <b>${S.name}</b> ${Object.keys(e).filter(x=>e[x]).map(x=>`<span class="chip ${e[x]>0?'up':'down'}">${KL[x]} ${e[x]>0?'+':''}${e[x]}</span>`).join('')}`; }).join(' ')} ${L.guard.cut>0?`<span class="chip up">🛡️ 대비 성공 · 피해 막음${L.guard.stock?` · ${A.energyName} +${L.guard.stock}`:''}</span>`:'<span class="chip down">🛡️ 대비 실패</span>'}</p>` : ''}
       <p class="nat">이번 10년의 자연 변화 · ${A.habName} ${Math.round(L.hab)} → ${A.energyName} ${nat.food>0?'+':''}${nat.food}${nat.dh?`, ${A.healthName} ${nat.dh>0?'+':''}${nat.dh}`:''}, ${A.popName} ${nat.dp>0?'+':''}${nat.dp}</p>
       <div class="sci"><b>과학 노트</b> · ${ev.sci}</div>
       ${dead ? `<p class="jx" style="color:#B91C1C">… 더 이상 이어 쓸 ${A.name}가 남아 있지 않다.</p><button class="jbtn" id="next">기록 마치기 ${icon('arrow')}</button>`
@@ -233,6 +242,7 @@ function renderPlay(){
 }
 function bindPlay(){
   app.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { choose(run, +b.dataset.c); save(); renderPlay(); scrollJournal(); });
+  app.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const ok = answerGuard(run, +b.dataset.g); toast(ok?'대비 성공! 피해를 막아요':'대비 실패…', ok?'good':'bad'); save(); renderPlay(); });
   app.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const ok = answerQuiz(run, +b.dataset.q); toast(ok?'정답! 보급품 도착':'오답이에요', ok?'good':'bad'); save(); renderPlay(); });
   const nx = $('#next'); if (nx) nx.onclick = () => {
     if (run.sub === 'quizdone'){ run.sub = 'outcome'; run.gen < GENS-1 ? (run.gen++, run.sub='event') : (run.phase='end'); }

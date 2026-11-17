@@ -77,6 +77,7 @@ npm test       # 엔진·밸런스·파일 참조 테스트
 
 - 200년 생존기 사건·선택지·과학 노트: `public/century/engine.js`의 `ANIMALS`(미래), `HISTORY`(1930~2010년대), `NOW`(2020년대)
 - 특임대 역할: `ROLES`, 기습 이벤트: `SURPRISES`
+- 예보된 재난(자동, 기본 2세대에 한 번꼴): 일정 `disasterPlan`, 나올 수 있는 시대 `DISASTER_FROM`, 재난 브리핑 문제 `GUARDS`. 교사 화면의 수업 만들기에서 주기(없음·3세대·2세대·세대마다)를 고른다
 - 과학 무전 퀴즈: `public/century/engine.js`의 `QUIZ`
 - 에너지 도시 발전소·사건·퀴즈: `public/energy-city/engine.js`
 - 수치를 바꾼 뒤에는 `npm test`로 밸런스 테스트를 확인하세요.
