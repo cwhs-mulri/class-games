@@ -621,3 +621,21 @@ body.boardmode .lv-endband{flex:1 1 0;min-height:0;overflow:auto}
 .lv-dzplan span.past{opacity:.45}
 .lv-dzplan span.now{border-color:#FF5A50;background:rgba(255,59,48,.18)}
 .lv-dzband small{flex:1 0 100%;font-size:clamp(12px,1.7vh,15px);color:#E6C9C4;line-height:1.35}
+/* ---- 이어지는 선택: 습성 · 돌아오는 선택 ---- */
+.chip.habit{background:rgba(196,160,255,.14);color:#D9C4FF;border:1px solid rgba(196,160,255,.35)}
+.chip.habit.on{background:rgba(196,160,255,.32);color:#fff;border-color:#C4A0FF}
+.chip.later{background:rgba(127,211,255,.14);color:#BFE8FF;border:1px dashed rgba(127,211,255,.6)}
+.journal .chip.habit{background:#EFE6FB;color:#5B3A9B;border-color:#CDB8EE}
+.journal .chip.habit.on{background:#DCC8FA;color:#3F2478;border-color:#9B78D8}
+.journal .chip.later{background:#E4F1FA;color:#1F5C85;border-color:#7DB4D8}
+.habits{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}
+.habits b{font-size:13px;color:var(--muted);font-weight:600;margin-right:2px}
+.habits span,.lv-habits span{padding:3px 9px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);white-space:nowrap}
+.habits span.on,.lv-habits span.on{border-color:#C4A0FF;background:rgba(196,160,255,.18);color:#EDE0FF}
+.lv-habits{display:flex;flex-wrap:wrap;gap:5px;font-size:12px;margin-top:6px}
+.linkline{margin:8px 0 0;padding:8px 10px;border-left:3px solid #9B78D8;background:rgba(155,120,216,.10);border-radius:8px;font-family:var(--body);font-size:14px;line-height:1.5}
+.linkline.up{border-left-color:#E0A400;background:rgba(255,194,61,.16)}
+.linkline.ch{border-left-color:#3B82C4;background:rgba(59,130,196,.10)}
+.lv-habit{margin:8px 0 0;padding:8px 10px;border-left:3px solid #C4A0FF;background:rgba(196,160,255,.08);border-radius:8px;font-size:14px}
+.lv-habit.up{border-left-color:var(--gold,#FFC23D);background:rgba(255,194,61,.12)}
+.lv-bhab{display:inline-flex;gap:6px;font-size:.8em}.lv-bhab i{font-style:normal;white-space:nowrap}

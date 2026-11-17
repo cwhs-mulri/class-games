@@ -9,6 +9,7 @@
 - 혼자 하기 모드 상태는 `localStorage`. 200년 생존기 수업 모드는 Firebase Realtime Database(`rooms/수업코드/...`)를 쓰고, 진행 계산은 교사 화면(live.js의 advanceStage)만 한다. 학생은 자기 uid 아래(players·votes·quiz·abil·prep·guard 등)만 쓴다 — 데이터 구조를 바꾸면 `database.rules.json`도 함께 고친다. 교사는 관리자(`TEACHER_EMAILS`, 규칙에도 같은 주소)가 `teachers/{이메일 키}`에 등록하고(키는 소문자, `.`→`,`), 수업은 `meta/owner`(uid)인 교사만 쓴다. 규칙을 바꾸면 `tests/rules/rules.test.mjs`도 고친다(CI에서 에뮬레이터로 실행).
 - 수업 모드 진행 순서(세대마다): 사건 투표(+결과 예측·지원, 예보된 재난이 있으면 재난 브리핑 문제) → 결과 → 긴급 구조(쓰러진 모둠, 한 판 1번) → 과학 무전(홀수 세대) → 기후 정상 회의(`SUMMIT_GENS`) → 30초 미니게임(`MID_GEN`) → 다음 세대. 개인 점수는 교사 화면이 `scores/{uid}`에 쓴다.
 - 예보된 재난(자동): `disasterPlan(수업 코드, run.dz)`로 정해진다(기본 2세대 묶음마다 1가지, 2020년대부터 가끔 2가지, `meta.dz`=0이면 없음). 학생은 `guard/{세대}/{uid}`에 브리핑 답을 쓰고, 맞힌 비율만큼 생물 피해가 줄어든다(`GUARD_MAX`, 기온 변화는 그대로). 혼자 하기는 맞히면 전부 막고 비상 식량을 얻는다. 교사 기습 이벤트는 대비할 수 없다.
+- 이어지는 선택: (1) 돌아오는 선택 — 선택지의 `set: '깃발'`과 뒤 사건의 `chain: {flag, e, t}`. 깃발을 세우는 사건은 반드시 돌아오는 사건보다 먼저 나와야 한다(테스트가 검사, 미래 사건은 단계 안에서 순서가 섞인다). (2) 습성 — 선택 종류(`tagOf`: 문구·효과로 가르고 `TAG_FIX`나 선택지의 `g`로 바로잡음)를 `run.hb`에 세어 3·6번째에 단계가 오른다(`HABITS`, `HABIT_FX`).
 - 자석 브레이크 놀이공원(`magnet-park`) 수업 모드는 `parks/수업코드/...`. 교사만 meta·live·res·scores, 학생은 자기 uid 아래 players·design·shake/날·quiz/날만 쓴다. 자리 담당은 설계 시작 때 `live.own[모둠]`(들어온 순서)으로 고정: i번 자리 = own[(i+1) % 인원], 계약 전력 = own[0]. 영업 계산은 교사 화면(live.js advance)만 한다.
 - 수업 모드 시험: 주소에 `?local`을 붙이면 한 브라우저 여러 탭으로 교사·전자칠판·학생을 띄울 수 있다.
 - Three.js는 r128 고정(`public/vendor`). API를 쓸 때 r128 기준으로 확인한다.

@@ -65,7 +65,7 @@ const LIVE = (function () {
   const G = gid => (R.meta && R.meta.groups && R.meta.groups[gid]) || null;
   function norm(run) {
     if (!run) return null;
-    run.flags = run.flags || {}; run.recs = run.recs || []; run.log = run.log || []; run.quizAns = run.quizAns || {}; run.init = run.init || { pop: run.pop, energy: run.energy, health: run.health, flags: {} };
+    run.flags = run.flags || {}; run.recs = run.recs || []; run.log = run.log || []; run.quizAns = run.quizAns || {}; run.hb = run.hb || {}; run.flagAt = run.flagAt || {}; run.init = run.init || { pop: run.pop, energy: run.energy, health: run.health, flags: {} };
     run.init.flags = run.init.flags || {};
     for (let i = 0; i < run.recs.length; i++) run.recs[i] = run.recs[i] || { c: 0 };
     return run;
@@ -151,9 +151,27 @@ const LIVE = (function () {
     return [...out];
   }
   const joinURL = code => location.origin + '/century/#join/' + code;
-  function hintChips(animal, c, flags, luck) {
+  // 선택지에 붙는 연결 표시: 쌓이는 습성과 훗날 돌아오는 선택
+  function linkChips(run, c) {
+    const k = choiceLink(run, c);
+    return `<span class="chip habit ${k.active ? 'on' : ''}">${k.icon} ${k.name} ${k.active ? '습성 적용' : k.next ? `${k.n}/${k.next}` : '★'.repeat(k.lv)}</span>${k.later ? '<span class="chip later">🔗 훗날 돌아올 선택</span>' : ''}`;
+  }
+  function habitStrip(run) {
+    const h = habitsOf(run), ks = HABIT_ORDER.filter(k => h[k].n > 0); if (!ks.length) return '';
+    return `<div class="lv-habits" aria-label="우리 무리의 습성">${ks.map(k => `<span class="${h[k].lv ? 'on' : ''}" title="${esc(HABITS[k].how)}을 되풀이하면 습성이 돼요">${HABITS[k].icon} ${HABITS[k].name} ${h[k].lv ? '★'.repeat(h[k].lv) : `${h[k].n}/${h[k].next}`}</span>`).join('')}</div>`;
+  }
+  // 결과 화면: 습성이 생겼거나 도왔을 때, 앞선 선택이 돌아왔을 때
+  function linkLines(run, Ls) {
+    const A = ANIMALS[run.animal], hb = Ls.habit, out = [];
+    if (Ls.chain) { const f = Ls.chainFrom; out.push(`<p class="lv-chain">⛓ <b>${f ? `${f.g + 1}세대(${DECADES[f.g]}년대)에 고른 「${esc(f.l)}」의 결과가 돌아왔다` : '앞선 선택이 돌아왔다'}</b> · ${esc(Ls.chain)} ${effChips(run.animal, Ls.chainE)}</p>`); }
+    if (hb && hb.up) out.push(`<p class="lv-habit up">${HABITS[hb.tag].icon} <b>「${HABITS[hb.tag].name}」 습성 ${hb.up}단계!</b> ${HABITS[hb.tag].how}을 ${hb.n}번 되풀이해 무리의 습성으로 굳었어요 · ${esc(habitDesc(run.animal, hb.tag))}</p>`);
+    if (hb && hb.use) out.push(`<p class="lv-habit">${HABITS[hb.use].icon} <b>${HABITS[hb.use].name} 습성</b> · ${HABIT_USE[hb.use]}</p>`);
+    if (hb && (hb.passive || []).length) out.push(`<p class="lv-habit">${hb.passive.map(x => `${HABITS[x.k].icon} <b>${HABITS[x.k].name} 습성</b> ${x.k === 'store' ? A.energyName : A.popName} +${x.v}`).join(' · ')}</p>`);
+    return out.join('');
+  }
+  function hintChips(animal, c, flags, luck, run) {
     const A = ANIMALS[animal], L = { pop: A.popName, energy: A.energyName, health: A.healthName, hab: A.habName, food: '먹이터' };
-    if (c.r) { let p = c.r.p; if (c.r.flagP) for (const f in c.r.flagP) if (flags && flags[f]) p = c.r.flagP[f]; if (luck) p = Math.min(.95, p + .25); return `<span class="chip luck">운에 맡김 · ${p >= .6 ? '가능성 높음' : p >= .45 ? '반반' : '가능성 낮음'}</span>`; }
+    if (c.r) { let p = c.r.p; if (c.r.flagP) for (const f in c.r.flagP) if (flags && flags[f]) p = c.r.flagP[f]; if (run) p = Math.min(.95, p + HABIT_FX.luck * habitLv((run.hb || {}).risk)); if (luck) p = Math.min(.95, p + .25); return `<span class="chip luck">운에 맡김 · ${p >= .6 ? '가능성 높음' : p >= .45 ? '반반' : '가능성 낮음'}</span>`; }
     const e = c.e || {}, ks = Object.keys(e).filter(k => e[k]);
     if (!ks.length) return '<span class="chip">변화 없음</span>';
     return ks.map(k => `<span class="chip ${e[k] > 0 ? 'up' : 'down'}">${L[k]} ${e[k] > 0 ? '↑' : '↓'}${Math.abs(e[k]) >= 15 ? (e[k] > 0 ? '↑' : '↓') : ''}</span>`).join('');
@@ -759,7 +777,7 @@ const LIVE = (function () {
       else if (sub === 'prep') { const n = ms.filter(m => R.prep && R.prep[m.uid]).length; status = `<span>60초 준비 ${n}/${ms.length}명 완료</span>`; }
       else if (run && run.extinctAt != null) status = `<span class="dead">멸종 · ${DECADES[run.extinctAt]}년대</span>`;
       else if (sub === 'event' && run) { const ev = findEvent(run.animal, run.order[gen]); const n = ms.filter(m => R.votes && R.votes[gen] && R.votes[gen][m.uid]).length; status = `<b>${esc(ev.title)}</b><span>투표 ${n}/${ms.length}</span>`; }
-      else if (sub === 'outcome' && run && run.last && run.last.gen === gen) { const ev = findEvent(run.animal, run.order[gen]); const Ls = run.last; const dp = Math.round(run.pop - Ls.before.pop); status = `<b>→ ${esc(ev.c[Ls.idx].l)}</b><span class="${dp >= 0 ? 'up' : 'down'}">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</span>${(Ls.roleNames || []).map(n => `<span class="role">★ ${esc(n)}</span>`).join('')}${(Ls.notes || []).map(k => { const N = noteInfo(k) || {}; return `<span class="down">${esc(N.icon)} ${esc(N.name)}</span>`; }).join('')}${Ls.guard ? `<span class="${Ls.guard.cut > 0 ? 'up' : 'down'}">🛡️ 대비 ${Ls.guard.right || 0}/${Ls.guard.n || 0} · 피해 −${Math.round(Ls.guard.cut * 100)}%</span>` : ''}${Ls.chain ? `<span class="chainc" title="${esc(Ls.chain)}">⛓ 앞선 선택이 돌아옴</span>` : ''}${(() => { const ai = R.groups[gid] && R.groups[gid].aidIn; return ai && ai.gen === gen ? `<span class="up">🤝 ${ai.from.length}모둠 지원</span>` : ''; })()}${run.rescue != null ? '<b class="down">🚑 구조 미션 대기</b>' : ''}`; }
+      else if (sub === 'outcome' && run && run.last && run.last.gen === gen) { const ev = findEvent(run.animal, run.order[gen]); const Ls = run.last; const dp = Math.round(run.pop - Ls.before.pop); status = `<b>→ ${esc(ev.c[Ls.idx].l)}</b><span class="${dp >= 0 ? 'up' : 'down'}">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</span>${(Ls.roleNames || []).map(n => `<span class="role">★ ${esc(n)}</span>`).join('')}${(Ls.notes || []).map(k => { const N = noteInfo(k) || {}; return `<span class="down">${esc(N.icon)} ${esc(N.name)}</span>`; }).join('')}${Ls.guard ? `<span class="${Ls.guard.cut > 0 ? 'up' : 'down'}">🛡️ 대비 ${Ls.guard.right || 0}/${Ls.guard.n || 0} · 피해 −${Math.round(Ls.guard.cut * 100)}%</span>` : ''}${Ls.chain ? `<span class="chainc" title="${esc(Ls.chain)}">⛓ ${Ls.chainFrom ? `${DECADES[Ls.chainFrom.g]}년대의 선택이 돌아옴` : '앞선 선택이 돌아옴'}</span>` : ''}${Ls.habit && Ls.habit.up ? `<span class="chainc">${HABITS[Ls.habit.tag].icon} 「${HABITS[Ls.habit.tag].name}」 습성 ${Ls.habit.up}단계</span>` : ''}${(() => { const ai = R.groups[gid] && R.groups[gid].aidIn; return ai && ai.gen === gen ? `<span class="up">🤝 ${ai.from.length}모둠 지원</span>` : ''; })()}${run.rescue != null ? '<b class="down">🚑 구조 미션 대기</b>' : ''}`; }
       else if (sub === 'summit' && run) { const box = (R.summit && R.summit[gen]) || {}; status = `<span>🌍 약속 투표 ${ms.filter(m => box[m.uid]).length}/${ms.length}</span>`; }
       else if (sub === 'summitres' && run) { const res = L.summits && L.summits[gen]; const pl = res && res.pl ? res.pl[gid] : null; status = pl != null ? `<span class="${pl ? 'up' : ''}">🌍 ${PLEDGES[pl].name}${PLEDGES[pl].cost ? ' · 에너지 −' + PLEDGES[pl].cost : ''}</span>` : ''; }
       else if (sub === 'rescue' && run) { const box = (R.rescue && R.rescue[gen]) || {}; status = run.rescue != null ? `<b class="down">🚑 구조 미션</b><span>답변 ${ms.filter(m => box[m.uid]).length}/${ms.length}</span>` : ''; }
@@ -771,7 +789,7 @@ const LIVE = (function () {
       let bub = '';
       if (sub === 'outcome' && run && run.last && run.last.gen === gen && el < 4500) { const dp = Math.round(run.pop - run.last.before.pop); bub = `<div class="lv-dbub ${dp >= 0 ? 'up' : 'down'}" style="animation-delay:-${Math.max(0, Math.round(el))}ms">${A.popName} ${dp >= 0 ? '+' : ''}${dp}</div>`; }
       return `<article class="lv-card ${run && run.extinctAt != null ? 'ext' : ''} ${justExt ? 'just-ext' : ''} ${surv ? 'surv' : ''}" data-g="${gid}" ${justExt ? `style="--ed:-${Math.max(0, Math.round(el))}ms"` : ''}>
-        <header><b>${esc(g.name)}</b><span>${A.name}</span>${isSos(run) && sub !== 'end' ? '<span class="lv-sosb">🆘 구조 요청</span>' : ''}<span class="t" style="color:${tCol(st.T)}">+${f1(st.T)}°C</span><span class="sc" style="color:${SCOL[g.scen]}">${SCENARIOS[g.scen].name}</span></header>
+        <header><b>${esc(g.name)}</b><span>${A.name}</span>${run ? (() => { const h = habitsOf(run); return `<span class="lv-bhab">${HABIT_ORDER.filter(k => h[k].lv).map(k => `<i title="${HABITS[k].name} 습성">${HABITS[k].icon}${'★'.repeat(h[k].lv)}</i>`).join('')}</span>`; })() : ''}${isSos(run) && sub !== 'end' ? '<span class="lv-sosb">🆘 구조 요청</span>' : ''}<span class="t" style="color:${tCol(st.T)}">+${f1(st.T)}°C</span><span class="sc" style="color:${SCOL[g.scen]}">${SCENARIOS[g.scen].name}</span></header>
         <div class="lv-view" id="v_${gid}">${run && run.extinctAt != null ? '<div class="lv-stamp">멸종</div>' : ''}${run && run.rescue != null ? '<div class="lv-stamp warn">구조 미션</div>' : ''}${surv ? '<div class="lv-sstamp">생존</div>' : ''}${bub}</div>
         <div class="lv-stats"><span>${A.popName}</span>${barK(st.pop, '#7FD3FF', gid + ':p')}<span>${A.energyName}</span>${barK(st.energy, '#FFC23D', gid + ':e')}<span>${A.healthName}</span>${barK(st.health, '#4ADE80', gid + ':h')}<span>${A.habName}</span>${barK(st.hab, st.hab < 30 ? '#FB7185' : '#A78BFA', gid + ':a')}</div>
         <div class="lv-status">${status}</div>
@@ -855,7 +873,7 @@ const LIVE = (function () {
     const head = `<header class="lv-phead"><div><b>${esc(g.name)}</b> · ${A.name} <span class="muted">· ${esc(meP.name)}</span> <span class="lv-myscore" title="개인 점수">⭐ ${my.total}</span></div><div class="lv-pclock"><span>${sub === 'lobby' || sub === 'prep' ? SUB_NAME[sub] : `${DECADES[gen]}년대 · ${SUB_NAME[sub]}`}</span><b data-clock></b></div></header>
       ${myRole ? `<div class="lv-role">★ 나는 <b>${myRole.name}</b> · ${myRole.ability}: ${abilityDesc(g.animal, myRole.type)} <span class="muted">(남은 ${Math.max(0, ROLE_USES - usedN)}번)</span></div>` : ''}`;
     const nb = (k, v) => `<b data-nk="me:${k}" data-n="${Math.round(v)}">${Math.round(v)}</b>`;
-    const stats = run ? `<div class="lv-pstats"><span>${A.popName} ${nb('p', st.pop)}</span><span>${A.energyName} ${nb('e', st.energy)}</span><span>${A.healthName} ${nb('h', st.health)}</span><span>${A.habName} ${nb('a', st.hab)}</span><span style="color:${tCol(st.T)}">+${f1(st.T)}°C</span></div>` : '';
+    const stats = run ? `<div class="lv-pstats"><span>${A.popName} ${nb('p', st.pop)}</span><span>${A.energyName} ${nb('e', st.energy)}</span><span>${A.healthName} ${nb('h', st.health)}</span><span>${A.habName} ${nb('a', st.hab)}</span><span style="color:${tCol(st.T)}">+${f1(st.T)}°C</span></div>${habitStrip(run)}` : '';
     let body = '';
     if (sub === 'lobby') body = `<div class="card"><h3>선생님이 시작할 때까지 기다려요</h3><p>우리 모둠: ${members(gid).map(m => esc(m.name)).join(', ')}</p><p class="muted">1920년대 ${A.place}에서 출발해 2110년대까지, 200년을 버텨야 해요. 선택지는 모둠원 다수결로 정해져요.</p></div>`;
     else if (sub === 'prep') {
@@ -878,7 +896,7 @@ const LIVE = (function () {
           <div class="lv-dzopts">${Gd.a.map((a, i) => `<button data-gd="${i}" class="${myG && myG.a === i ? 'on' : ''}">${a}</button>`).join('')}</div>
           <small class="muted">응답 ${guardStat(gid, gen).done}/${guardStat(gid, gen).n}명 · 시간 안에는 바꿀 수 있어요</small></div></div>` : '';
       body = `${dzCard}<div class="card lv-ev"><div class="eyebrow">${gen + 1}세대 · ${DECADES[gen]}년대</div><h2>${ev.title}</h2><p>${ev.text}</p>
-        <div class="lv-choices">${ev.c.map((c, i) => `<button class="lv-choice ${myV && myV.c === i ? 'on' : ''}" data-v="${i}"><b>${c.l}</b><span class="hints">${hintChips(run.animal, c, run.flags, luckOn)}</span>
+        <div class="lv-choices">${ev.c.map((c, i) => `<button class="lv-choice ${myV && myV.c === i ? 'on' : ''}" data-v="${i}"><b>${c.l}</b><span class="hints">${hintChips(run.animal, c, run.flags, luckOn, run)}${linkChips(run, c)}</span>
           <span class="lv-vbar"><i style="width:${ms.length ? counts[i].length / ms.length * 100 : 0}%"></i></span><span class="lv-who">${counts[i].map(m => esc(m.name)).join(' · ') || '&nbsp;'}</span></button>`).join('')}</div>
         <p class="muted">눌러서 투표 · 시간 안에는 바꿀 수 있어요 · 모둠 다수결로 확정</p>
         ${myRole ? `<button class="btn ${abilOn ? 'ice' : ''} lg" id="pAbil" ${usedN >= ROLE_USES ? 'disabled' : ''}>${abilOn ? '★ 능력 사용 예약됨 (누르면 취소)' : usedN >= ROLE_USES ? '능력을 모두 썼어요' : `★ ${myRole.ability} 사용하기`}</button>` : ''}</div>`;
@@ -901,7 +919,7 @@ const LIVE = (function () {
           return `<div class="lv-dzres ${Ls.guard.cut > 0 ? 'ok' : ''}"><b>🛡️ 재난 대비 · 모둠원 ${Ls.guard.n || 0}명 중 ${Ls.guard.right || 0}명 정답 → 피해 ${Math.round(Ls.guard.cut * 100)}% 감소</b>
             <span>${(Ls.auto || []).map(k => `${SURPRISES[k].icon} ${SURPRISES[k].name} ${effChips(run.animal, cutE(SURPRISES[k].e[run.animal], Ls.guard.cut))}`).join(' ')}</span>
             <small>${mine ? (ok ? '⭕ 내 답 정답! 개인 점수 +1 · ' : '❌ 내 답은 틀렸어요 · ') : ''}정답: ${Gd.a[Gd.c]} — ${Gd.e}</small></div>`; })()}
-        ${Ls.chain ? `<p class="lv-chain">⛓ <b>앞선 선택이 돌아왔다</b> · ${esc(Ls.chain)} ${effChips(run.animal, Ls.chainE)}</p>` : ''}
+        ${linkLines(run, Ls)}
         ${(() => { const ai = R.groups[gid] && R.groups[gid].aidIn; return ai && ai.gen === gen ? `<p class="lv-aidin">🤝 ${ai.from.map(x => esc(gname(x))).join(' · ')}에서 먹이를 보냈어요 (${A.energyName} +${AID.gain * ai.from.length})</p>` : ''; })()}
         ${(() => { const pr = R.pred && R.pred[gen] && R.pred[gen][uid]; if (!pr) return ''; const dp = run.pop - Ls.before.pop, hit = (dp > 0 && pr.pr === 1) || (dp <= 0 && pr.pr === -1); return `<p class="lv-prres ${hit ? 'up' : 'down'}">🎯 ${hit ? '예측 적중! 개인 점수 +1' : '예측이 빗나갔어요'}</p>`; })()}
         ${run.rescue != null ? `<p class="lv-prres down">🚑 ${A.popName}가 0이 되었어요! 곧 긴급 구조 미션이 시작돼요. 모둠원 3분의 2가 맞히면 살아남아요.</p>` : ''}

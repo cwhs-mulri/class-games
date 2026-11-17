@@ -176,11 +176,29 @@ function hintChips(c){
   const A = ANIMALS[run.animal], L = KEYLBL(A);
   if (c.r){
     let p = c.r.p, bonus = false; if (c.r.flagP) for (const f in c.r.flagP) if (run.flags[f]){ p = c.r.flagP[f]; bonus = true; }
+    p = Math.min(.95, p + HABIT_FX.luck * habitLv((run.hb||{}).risk));
     return `<span class="chip luck">운에 맡김 · ${p>=.6?'가능성 높음':p>=.45?'반반':'가능성 낮음'}</span>${bonus?'<span class="chip bonus">★ 준비 보너스</span>':''}`;
   }
   const e = c.e || {}; const ks = Object.keys(e).filter(k=>e[k]);
   if (!ks.length) return '<span class="chip">변화 없음</span>';
   return ks.map(k=>`<span class="chip ${e[k]>0?'up':'down'}">${L[k]} ${e[k]>0?'↑':'↓'}${Math.abs(e[k])>=15?(e[k]>0?'↑':'↓'):''}</span>`).join('');
+}
+function linkChips(c){
+  const k = choiceLink(run, c);
+  return `<span class="chip habit ${k.active?'on':''}">${k.icon} ${k.name} ${k.active?'습성 적용':k.next?`${k.n}/${k.next}`:'★'.repeat(k.lv)}</span>${k.later?'<span class="chip later">🔗 훗날 돌아올 선택</span>':''}`;
+}
+function habitStrip(){
+  const h = habitsOf(run), ks = HABIT_ORDER.filter(k=>h[k].n>0); if (!ks.length) return '';
+  return `<div class="habits"><b>우리 무리의 습성</b>${ks.map(k=>`<span class="${h[k].lv?'on':''}" title="${HABITS[k].how}을 되풀이하면 습성이 돼요">${HABITS[k].icon} ${HABITS[k].name} ${h[k].lv?'★'.repeat(h[k].lv):`${h[k].n}/${h[k].next}`}</span>`).join('')}</div>`;
+}
+function linkLines(L){
+  const A = ANIMALS[run.animal], KL = KEYLBL(A), hb = L.habit, out = [];
+  const chips = e => Object.keys(e||{}).filter(k=>e[k]).map(k=>`<span class="chip ${e[k]>0?'up':'down'}">${KL[k]} ${e[k]>0?'+':''}${e[k]}</span>`).join('');
+  if (L.chain){ const f = L.chainFrom; out.push(`<p class="linkline ch">⛓ <b>${f?`${f.g+1}세대(${DECADES[f.g]}년대)에 고른 「${f.l}」의 결과가 돌아왔다`:'앞선 선택이 돌아왔다'}</b> · ${L.chain} ${chips(L.chainE)}</p>`); }
+  if (hb && hb.up) out.push(`<p class="linkline up">${HABITS[hb.tag].icon} <b>「${HABITS[hb.tag].name}」 습성 ${hb.up}단계!</b> ${HABITS[hb.tag].how}을 ${hb.n}번 되풀이해 무리의 습성으로 굳었다 · ${habitDesc(run.animal, hb.tag)}</p>`);
+  if (hb && hb.use) out.push(`<p class="linkline">${HABITS[hb.use].icon} <b>${HABITS[hb.use].name} 습성</b> · ${HABIT_USE[hb.use]}</p>`);
+  if (hb && (hb.passive||[]).length) out.push(`<p class="linkline">${hb.passive.map(x=>`${HABITS[x.k].icon} <b>${HABITS[x.k].name} 습성</b> ${x.k==='store'?A.energyName:A.popName} +${x.v}`).join(' · ')}</p>`);
+  return out.join('');
 }
 function journalHTML(){
   const A = ANIMALS[run.animal], g = run.gen, ev = findEvent(run.animal, run.order[g]);
@@ -196,7 +214,7 @@ function journalHTML(){
         ${ga!=null?`<p style="font-size:14px"><b style="color:${ga===Gd.c?'var(--good)':'var(--bad)'}">${ga===Gd.c?'대비 성공! 피해를 막았다.':'대비 실패. 재난을 그대로 맞는다.'}</b> ${Gd.e}</p>`:'<p style="font-size:13px;opacity:.8">기회는 한 번이에요. 답하지 않고 아래에서 선택하면 대비 없이 재난을 맞아요.</p>'}
       </div></div>` : '';
     body = `${dz}<div class="jt">${ev.title}</div><p class="jx">${ev.text}</p>
-      <div class="choices">${ev.c.map((c,i)=>`<button class="choice" data-c="${i}"><b>${c.l}</b><span class="hints">${hintChips(c)}</span></button>`).join('')}</div>
+      <div class="choices">${ev.c.map((c,i)=>`<button class="choice" data-c="${i}"><b>${c.l}</b><span class="hints">${hintChips(c)}${linkChips(c)}</span></button>`).join('')}</div>
       <p class="nat">모둠이 함께 토론해서 하나를 고르세요. 선택 뒤에는 ${A.habName}에 따라 자연스러운 변화가 이어져요.</p>`;
   } else if (run.sub === 'outcome'){
     const L = run.last, KL = KEYLBL(A), e = L.eff || {};
@@ -206,6 +224,7 @@ function journalHTML(){
     body = `<div class="jt">${ev.title}</div>
       <div class="outcome"><p class="jx">→ ${L.text}${L.roll?` <span style="font-size:20px;color:var(--pink2)">(${L.roll.good?'운이 따랐다':'운이 없었다'})</span>`:''}</p>
       <div class="deltas">${eff||'<span class="chip">선택 효과 없음</span>'}</div>
+      ${linkLines(L)}
       ${L.guard ? `<p class="dzres ${L.guard.cut>0?'ok':''}">${(L.auto||[]).map(k=>{ const S=SURPRISES[k], e=cutE(S.e[run.animal]||{}, L.guard.cut); return `${S.icon} <b>${S.name}</b> ${Object.keys(e).filter(x=>e[x]).map(x=>`<span class="chip ${e[x]>0?'up':'down'}">${KL[x]} ${e[x]>0?'+':''}${e[x]}</span>`).join('')}`; }).join(' ')} ${L.guard.cut>0?`<span class="chip up">🛡️ 대비 성공 · 피해 막음${L.guard.stock?` · ${A.energyName} +${L.guard.stock}`:''}</span>`:'<span class="chip down">🛡️ 대비 실패</span>'}</p>` : ''}
       <p class="nat">이번 10년의 자연 변화 · ${A.habName} ${Math.round(L.hab)} → ${A.energyName} ${nat.food>0?'+':''}${nat.food}${nat.dh?`, ${A.healthName} ${nat.dh>0?'+':''}${nat.dh}`:''}, ${A.popName} ${nat.dp>0?'+':''}${nat.dp}</p>
       <div class="sci"><b>과학 노트</b> · ${ev.sci}</div>
@@ -232,6 +251,7 @@ function renderPlay(){
       ${climateHTML()}
       <div class="stageBox" id="playStage"><div class="stagelbl"><b>${A.name}</b>${A.place} · ${DECADES[g]}년대</div></div>
       ${statsHTML()}
+      ${habitStrip()}
       <div class="gh"><header><b style="font-size:14px">온실 효과 계기판</b><span class="muted" style="font-size:12px">CO₂가 늘면 빠져나가지 못하는 적외선이 늘어요</span></header>${ghSVG(S.ppm[g], S.T[g])}</div>
       <div style="display:flex;gap:8px"><button class="btn" id="quit">${icon('exit')} 저장하고 나가기</button></div>
     </div>

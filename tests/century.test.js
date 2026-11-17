@@ -232,3 +232,36 @@ test('혼자 하기: 브리핑은 한 번만 답할 수 있고, 맞히면 피해
   assert.equal(E.answerGuard(run, Gd.c), true); assert.equal(E.answerGuard(run, (Gd.c + 1) % 3), true);
   E.choose(run, 0); assert.equal(run.last.guard.cut, 1); assert.equal(run.last.guard.stock, 6);
 });
+
+test('돌아오는 선택: 깃발을 세운 사건은 언제나 그 결과가 돌아오는 사건보다 먼저 나온다', () => {
+  let n = 0;
+  for (const a of E.ANIMAL_ORDER) {
+    const evs = E.allEvents(a), setAt = {};
+    evs.forEach(ev => ev.c.forEach(c => { if (c.set) (setAt[c.set] = setAt[c.set] || []).push(ev.id); }));
+    for (const ev of evs) if (ev.chain) {
+      n++; assert.ok(setAt[ev.chain.flag], `${ev.id}: ${ev.chain.flag}를 세우는 선택이 없다`);
+      for (let i = 0; i < 60; i++) { const ord = E.eventOrder('c' + i, a); assert.ok(setAt[ev.chain.flag].some(id => ord.indexOf(id) < ord.indexOf(ev.id)), `${a} ${ev.id}`); }
+    }
+  }
+  assert.ok(n >= 20);
+  // 언제 무엇을 골랐는지 기록되어 결과에 함께 나온다
+  const run = E.newRun('1234', 'T', 'bear', 'mid', 0); E.applyPrep(run, { food: 9, special: 1, damage: 15 });
+  while (run.gen < 9) { const ev = E.findEvent('bear', run.order[run.gen]); E.resolveRun(run, ev.id === 'bh6' ? 1 : 0); run.gen++; run.sub = 'event'; }
+  E.resolveRun(run, 1);
+  assert.ok(run.last.chain); assert.deepEqual(run.last.chainFrom, { g: 6, l: '가리지 않고 먹는다' });
+});
+
+test('습성: 같은 종류의 선택을 3번 되풀이하면 생기고 다음 선택을 돕는다', () => {
+  for (const a of E.ANIMAL_ORDER) for (const ev of E.allEvents(a)) for (const c of ev.c) assert.ok(E.HABITS[E.tagOf(c)], c.l);
+  const st = { pop: 50, energy: 50, health: 80, hb: { move: 3 }, flags: {} };
+  const k = E.choiceLink(st, { l: '북쪽으로 이동한다', e: { energy: -10, hab: 5 } });
+  assert.equal(k.tag, 'move'); assert.equal(k.lv, 1); assert.equal(k.active, true);
+  // 북극곰 1990년대 「얼음을 따라 북쪽으로 간다」(지방 -10): 개척 습성이 있으면 -7
+  const run = E.newRun('1234', 'T', 'bear', 'mid', 0); E.applyPrep(run, { food: 9, special: 1, damage: 15 });
+  const g = run.order.indexOf('bh7');
+  const plain = E.stepGen('bear', 'mid', '1234', 'T', g, run, 0, {}), habit = E.stepGen('bear', 'mid', '1234', 'T', g, Object.assign({}, run, { hb: { move: 3 } }), 0, {});
+  assert.equal(plain.eff.energy, -10); assert.equal(habit.eff.energy, -7); assert.equal(habit.habit.use, 'move');
+  assert.equal(E.stepGen('bear', 'mid', '1234', 'T', g, Object.assign({}, run, { hb: { move: 2 } }), 0, {}).habit.up, 1);
+  const store = E.stepGen('bear', 'mid', '1234', 'T', g, Object.assign({}, run, { hb: { store: 6 } }), 0, {});
+  assert.equal(store.state.energy - plain.state.energy, 4);
+});
